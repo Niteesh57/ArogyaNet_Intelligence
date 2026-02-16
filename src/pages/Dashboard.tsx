@@ -50,7 +50,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (isAdmin) {
-      adminApi.dashboardStats().then((r) => setStats(r.data)).catch(() => {});
+      adminApi.dashboardStats().then((r) => setStats(r.data)).catch(() => { });
     }
   }, [isAdmin]);
 
@@ -66,54 +66,62 @@ const Dashboard = () => {
   return (
     <div className="space-y-10">
       {/* Welcome */}
-      <div className="text-center space-y-3 py-6 opacity-0 animate-fade-up" style={{ animationDelay: "100ms", animationFillMode: "forwards" }}>
-        <h1 className="font-serif text-4xl md:text-5xl font-bold text-foreground">
-          Welcome to <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">LIFE HEALTH CRM</span>
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          {user?.full_name ? `Hello, ${user.full_name}` : "Secure Systems for Modern Care"}
-        </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-6 border-b border-border/40">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            {user?.full_name ? `Welcome back, ${user.full_name}` : "Overview of your medical system"}
+          </p>
+        </div>
+        <div className="text-sm text-muted-foreground bg-secondary/50 px-3 py-1 rounded-full border border-border">
+          {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
       </div>
 
       {/* Stats (admin only) */}
       {isAdmin && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 opacity-0 animate-fade-up" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-fade-up">
           {statCards.map((s) => (
             <div
               key={s.label}
-              className={`glass-panel rounded-xl p-4 text-center space-y-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_25px_hsla(170,66%,51%,0.15)] ${
-                s.alert && s.value > 0 ? "border-destructive/50 shadow-[0_0_20px_hsla(0,84%,60%,0.15)]" : ""
-              }`}
+              className={`dashboard-card p-4 hover:border-primary/50 transition-colors ${s.alert && s.value > 0 ? "border-destructive/50 bg-destructive/5" : ""
+                }`}
             >
-              <s.icon className={`w-5 h-5 mx-auto ${s.alert && s.value > 0 ? "text-destructive" : "text-primary"}`} />
-              <p className="text-2xl font-bold text-foreground">
-                <AnimatedCounter target={s.value} />
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-tight">{s.label}</p>
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className={`p-2 rounded-full ${s.alert && s.value > 0 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">
+                    <AnimatedCounter target={s.value} />
+                  </p>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{s.label}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
 
       {/* Feature Grid */}
-      <div>
-        <h2 className="font-serif text-2xl font-semibold text-foreground mb-5 opacity-0 animate-fade-up" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>
-          Quick Access
+      <div className="animate-fade-up" style={{ animationDelay: "100ms" }}>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          Quick Actions
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {featureCards.map((card, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {featureCards.map((card) => (
             <Link
               key={card.title}
               to={card.path}
-              className="glass-panel rounded-xl p-5 flex items-start gap-4 group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.12)] opacity-0 animate-fade-up"
-              style={{ animationDelay: `${500 + i * 60}ms`, animationFillMode: "forwards" }}
+              className="dashboard-card p-5 flex items-start gap-4 group hover:border-primary/40 hover:shadow-md transition-all duration-200"
             >
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <card.icon className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                <card.icon className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{card.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{card.desc}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{card.desc}</p>
               </div>
             </Link>
           ))}

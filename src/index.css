@@ -4,81 +4,109 @@
 
 @layer base {
   :root {
-    --background: 192 78% 11%;
-    --foreground: 168 40% 93%;
+    /* Base - Slate 50 */
+    --background: 210 40% 98%;
+    /* Foreground - Slate 900 */
+    --foreground: 222.2 47.4% 11.2%;
 
-    --card: 192 78% 11%;
-    --card-foreground: 168 40% 93%;
+    /* Card - White */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
 
-    --popover: 192 78% 11%;
-    --popover-foreground: 168 40% 93%;
+    /* Popover - White */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 170 66% 51%;
-    --primary-foreground: 192 78% 11%;
+    /* Primary - Medical Blue/Teal (Teal 600) */
+    --primary: 176 60.8% 30.6%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 189 74% 41%;
-    --secondary-foreground: 168 40% 93%;
+    /* Secondary - Slate 100 */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 172 12% 66%;
-    --muted-foreground: 172 12% 66%;
+    /* Muted - Slate 100/400 */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 170 66% 51%;
-    --accent-foreground: 192 78% 11%;
+    /* Accent - Slate 100 */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
+    /* Destructive - Red 500 */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 189 30% 25%;
-    --input: 189 30% 20%;
-    --ring: 170 66% 51%;
+    /* Border - Slate 200 */
+    --border: 214.3 31.8% 91.4%;
+    /* Input - Slate 200 */
+    --input: 214.3 31.8% 91.4%;
+    /* Ring - Teal 600 */
+    --ring: 176 60.8% 30.6%;
 
-    --radius: 1rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 192 78% 11%;
-    --sidebar-foreground: 168 40% 93%;
-    --sidebar-primary: 170 66% 51%;
-    --sidebar-primary-foreground: 192 78% 11%;
-    --sidebar-accent: 189 74% 41%;
-    --sidebar-accent-foreground: 168 40% 93%;
-    --sidebar-border: 189 30% 25%;
-    --sidebar-ring: 170 66% 51%;
-
-    /* Custom healthcare tokens */
-    --lh-dark: 192 78% 11%;
-    --lh-glow: 170 66% 51%;
-    --lh-highlight: 189 74% 41%;
-    --lh-text: 168 40% 93%;
-    --lh-muted: 172 12% 66%;
+    /* Sidebar - Deep Slate (Slate 900) for professional contrast */
+    --sidebar-background: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 176 60.8% 30.6%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 217.2 32.6% 17.5%;
   }
 
   .dark {
-    --background: 192 78% 11%;
-    --foreground: 168 40% 93%;
-    --card: 192 78% 11%;
-    --card-foreground: 168 40% 93%;
-    --popover: 192 78% 11%;
-    --popover-foreground: 168 40% 93%;
-    --primary: 170 66% 51%;
-    --primary-foreground: 192 78% 11%;
-    --secondary: 189 74% 41%;
-    --secondary-foreground: 168 40% 93%;
-    --muted: 172 12% 66%;
-    --muted-foreground: 172 12% 66%;
-    --accent: 170 66% 51%;
-    --accent-foreground: 192 78% 11%;
+    /* Base - Slate 950 */
+    --background: 222.2 84% 4.9%;
+    /* Foreground - Slate 50 */
+    --foreground: 210 40% 98%;
+
+    /* Card - Slate 900 */
+    --card: 222.2 47.4% 11.2%;
+    --card-foreground: 210 40% 98%;
+
+    /* Popover - Slate 900 */
+    --popover: 222.2 47.4% 11.2%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary - Teal 500 */
+    --primary: 175 58% 45%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    /* Secondary - Slate 800 */
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted - Slate 800 */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Accent - Slate 800 */
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive - Red 900 */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 189 30% 25%;
-    --input: 189 30% 20%;
-    --ring: 170 66% 51%;
-    --sidebar-background: 192 78% 11%;
-    --sidebar-foreground: 168 40% 93%;
-    --sidebar-primary: 170 66% 51%;
-    --sidebar-primary-foreground: 192 78% 11%;
-    --sidebar-accent: 189 74% 41%;
-    --sidebar-accent-foreground: 168 40% 93%;
-    --sidebar-border: 189 30% 25%;
-    --sidebar-ring: 170 66% 51%;
+
+    /* Border - Slate 800 */
+    --border: 217.2 32.6% 17.5%;
+    /* Input - Slate 800 */
+    --input: 217.2 32.6% 17.5%;
+    /* Ring - Slate 800 */
+    --ring: 212.7 26.8% 83.9%;
+
+    /* Sidebar - Same as dark background */
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 175 58% 45%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 217.2 32.6% 17.5%;
   }
 }
 
@@ -92,52 +120,32 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cormorant Garamond', serif;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply tracking-tight;
   }
 }
 
-/* Grain texture overlay */
 @layer utilities {
-  .grain-overlay::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 1;
+  .dashboard-card {
+    @apply bg-card text-card-foreground rounded-lg border shadow-sm;
   }
 
-  .glass-panel {
-    background: hsla(192, 78%, 8%, 0.65);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid hsla(170, 66%, 51%, 0.15);
-    box-shadow:
-      0 0 40px hsla(170, 66%, 51%, 0.08),
-      inset 0 1px 0 hsla(170, 66%, 51%, 0.1),
-      inset 0 0 20px hsla(192, 78%, 11%, 0.3),
-      0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  }
-
-  /* Themed scrollbar */
+  /* Professional scrollbar */
   .scrollbar-themed::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
+
   .scrollbar-themed::-webkit-scrollbar-track {
-    background: hsla(192, 78%, 11%, 0.3);
-    border-radius: 3px;
+    @apply bg-transparent;
   }
+
   .scrollbar-themed::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, hsl(170, 66%, 51%), hsl(189, 74%, 41%));
-    border-radius: 3px;
-  }
-  .scrollbar-themed::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, hsl(170, 66%, 60%), hsl(189, 74%, 50%));
-  }
-  .scrollbar-themed {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(170, 66%, 51%) hsla(192, 78%, 11%, 0.3);
+    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
   }
 }

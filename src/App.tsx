@@ -15,6 +15,7 @@ import Inventory from "./pages/Inventory";
 import LabTests from "./pages/LabTests";
 import Floors from "./pages/Floors";
 import Availability from "./pages/Availability";
+import GoogleCallback from "./pages/GoogleCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/lab-tests" element={<ProtectedPage><LabTests /></ProtectedPage>} />
             <Route path="/floors" element={<ProtectedPage><Floors /></ProtectedPage>} />
             <Route path="/availability" element={<ProtectedPage><Availability /></ProtectedPage>} />
+            <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

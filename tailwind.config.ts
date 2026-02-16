@@ -14,8 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ["Cormorant Garamond", "serif"],
-        sans: ["Plus Jakarta Sans", "sans-serif"],
+        sans: ["Inter", "Plus Jakarta Sans", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -61,13 +60,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        lh: {
-          dark: "hsl(var(--lh-dark))",
-          glow: "hsl(var(--lh-glow))",
-          highlight: "hsl(var(--lh-highlight))",
-          text: "hsl(var(--lh-text))",
-          muted: "hsl(var(--lh-muted))",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -84,41 +76,14 @@ export default {
           to: { height: "0" },
         },
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        "slide-in-right": {
-          "0%": { opacity: "0", transform: "translateX(60px)" },
-          "100%": { opacity: "1", transform: "translateX(0)" },
-        },
-        "glow-pulse": {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "0.8" },
-        },
-        "underline-sweep": {
-          "0%": { transform: "scaleX(0)", transformOrigin: "left" },
-          "100%": { transform: "scaleX(1)", transformOrigin: "left" },
-        },
-        "bg-drift": {
-          "0%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-          "100%": { backgroundPosition: "0% 50%" },
-        },
-        "float-glow": {
-          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.08" },
-          "33%": { transform: "translate(30px, -20px) scale(1.1)", opacity: "0.12" },
-          "66%": { transform: "translate(-20px, 15px) scale(0.95)", opacity: "0.06" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-up": "fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        "slide-in-right": "slide-in-right 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        "glow-pulse": "glow-pulse 4s ease-in-out infinite",
-        "underline-sweep": "underline-sweep 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        "bg-drift": "bg-drift 20s ease-in-out infinite",
-        "float-glow": "float-glow 12s ease-in-out infinite",
+        "fade-up": "fade-up 0.5s ease-out forwards",
       },
     },
   },

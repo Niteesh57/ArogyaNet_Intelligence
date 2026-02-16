@@ -38,7 +38,7 @@ export const authApi = {
   register: (data: { user_in: any; hospital_in?: any }) =>
     api.post("/auth/register", data),
   googleLogin: (token: string) =>
-    api.post(`/auth/google?token=${token}`),
+    api.post("/auth/google", { token }),
   me: () => api.get("/auth/me"),
 };
 
@@ -105,4 +105,17 @@ export const availabilityApi = {
 export const hospitalsApi = {
   register: (data: any) => api.post("/hospitals/register", data),
   get: (id: string) => api.get(`/hospitals/${id}`),
+};
+
+// Users
+export const usersApi = {
+  me: () => api.get("/users/me"),
+  list: (skip = 0, limit = 100) => api.get(`/users/?skip=${skip}&limit=${limit}`),
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post("/users/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };

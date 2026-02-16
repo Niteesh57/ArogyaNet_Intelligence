@@ -18,7 +18,7 @@ const Availability = () => {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ staff_type: "doctor", staff_id: "", day_of_week: "monday", start_time: "09:00", end_time: "17:00" });
 
-  const fetch = () => { setLoading(true); availabilityApi.list().then((r) => setItems(r.data)).catch(() => {}).finally(() => setLoading(false)); };
+  const fetch = () => { setLoading(true); availabilityApi.list().then((r) => setItems(r.data)).catch(() => { }).finally(() => setLoading(false)); };
   useEffect(() => { fetch(); }, []);
 
   const handleCreate = async () => {
@@ -38,19 +38,24 @@ const Availability = () => {
         isAdmin ? <GlassButton onClick={() => { setForm({ staff_type: "doctor", staff_id: "", day_of_week: "monday", start_time: "09:00", end_time: "17:00" }); setModal(true); }}><Plus className="w-4 h-4 mr-1 inline" />Add Slot</GlassButton> : undefined
       } />
       {loading ? <Shimmer /> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 opacity-0 animate-fade-up" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-up">
           {grouped.map((g) => (
-            <div key={g.day} className="glass-panel rounded-xl p-4 space-y-3">
-              <h3 className="font-serif text-lg font-semibold text-foreground capitalize">{g.day}</h3>
+            <div key={g.day} className="dashboard-card p-4 space-y-3">
+              <h3 className="text-lg font-semibold text-foreground capitalize flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary/60" />
+                {g.day}
+              </h3>
               {g.slots.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No slots</p>
+                <p className="text-xs text-muted-foreground pl-4">No slots available</p>
               ) : (
                 <div className="space-y-2">
                   {g.slots.map((s) => (
-                    <div key={s.id} className="bg-background/30 rounded-lg px-3 py-2 text-xs">
-                      <span className="text-primary capitalize font-medium">{s.staff_type}</span>
-                      <span className="text-muted-foreground mx-1">•</span>
-                      <span className="text-foreground">{s.start_time} – {s.end_time}</span>
+                    <div key={s.id} className="bg-muted/50 rounded-md px-3 py-2 text-sm border border-border/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-primary font-medium capitalize">{s.staff_type}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase">{s.staff_id}</span>
+                      </div>
+                      <div className="text-foreground mt-0.5 font-mono text-xs">{s.start_time} – {s.end_time}</div>
                     </div>
                   ))}
                 </div>
