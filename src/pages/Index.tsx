@@ -85,8 +85,63 @@ const SignUpForm = () => (
   </div>
 );
 
+const HospitalRegisterForm = () => (
+  <div className="space-y-4">
+    <AuthInput label="Hospital / Organization Name" placeholder="City General Hospital" delay={100} />
+    <AuthInput label="Hospital ID / License No." placeholder="HOS-2026-XXXX" delay={150} />
+    <div
+      className="opacity-0 animate-fade-up space-y-2"
+      style={{ animationDelay: "200ms", animationFillMode: "forwards" }}
+    >
+      <label className="block text-sm font-medium tracking-wide text-foreground/70">
+        Specialization
+      </label>
+      <div className="relative group">
+        <select className="w-full bg-background/40 border border-border/50 rounded-lg px-4 py-3 text-sm text-foreground outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 focus:shadow-[0_0_20px_hsla(170,66%,51%,0.1)] appearance-none cursor-pointer">
+          <option value="" className="bg-background text-foreground">Select specialization</option>
+          <option value="general" className="bg-background text-foreground">General Medicine</option>
+          <option value="cardiology" className="bg-background text-foreground">Cardiology</option>
+          <option value="orthopedics" className="bg-background text-foreground">Orthopedics</option>
+          <option value="pediatrics" className="bg-background text-foreground">Pediatrics</option>
+          <option value="neurology" className="bg-background text-foreground">Neurology</option>
+          <option value="oncology" className="bg-background text-foreground">Oncology</option>
+          <option value="multispecialty" className="bg-background text-foreground">Multi-Specialty</option>
+        </select>
+        <div className="absolute bottom-0 left-0 h-[2px] w-full scale-x-0 bg-gradient-to-r from-primary to-secondary transition-transform duration-300 origin-left group-focus-within:scale-x-100 rounded-full" />
+      </div>
+    </div>
+    <AuthInput label="Location / Address" placeholder="123 Medical Ave, City, State" delay={250} />
+    <div
+      className="opacity-0 animate-fade-up space-y-2"
+      style={{ animationDelay: "300ms", animationFillMode: "forwards" }}
+    >
+      <label className="block text-sm font-medium tracking-wide text-foreground/70">
+        Description
+      </label>
+      <div className="relative group">
+        <textarea
+          rows={3}
+          placeholder="Brief description of your hospital or organization..."
+          className="w-full bg-background/40 border border-border/50 rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 focus:shadow-[0_0_20px_hsla(170,66%,51%,0.1)] resize-none"
+        />
+        <div className="absolute bottom-0 left-0 h-[2px] w-full scale-x-0 bg-gradient-to-r from-primary to-secondary transition-transform duration-300 origin-left group-focus-within:scale-x-100 rounded-full" />
+      </div>
+    </div>
+    <AuthInput label="Admin Email" type="email" placeholder="admin@hospital.org" delay={350} />
+    <AuthInput label="Password" type="password" placeholder="••••••••••" delay={400} />
+    <div className="opacity-0 animate-fade-up" style={{ animationDelay: "450ms", animationFillMode: "forwards" }}>
+      <button className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0">
+        Register Organization
+      </button>
+    </div>
+    <p className="text-center text-xs text-muted-foreground opacity-0 animate-fade-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
+      Once registered, you can add doctors, nurses &amp; patients under your organization.
+    </p>
+  </div>
+);
+
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
+  const [activeTab, setActiveTab] = useState<"signin" | "signup" | "hospital">("signin");
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden grain-overlay">
@@ -149,7 +204,7 @@ const Index = () => {
           >
             {/* Tab Toggle */}
             <div className="flex mb-8 border-b border-border/30">
-              {(["signin", "signup"] as const).map((tab) => (
+              {(["signin", "signup", "hospital"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -160,7 +215,7 @@ const Index = () => {
                       : "hsl(var(--muted-foreground))",
                   }}
                 >
-                  {tab === "signin" ? "Sign In" : "Create Account"}
+                  {tab === "signin" ? "Sign In" : tab === "signup" ? "Create Account" : "Hospital"}
                   {activeTab === tab && (
                     <span className="absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r from-primary to-secondary animate-underline-sweep rounded-full shadow-[0_0_8px_hsla(170,66%,51%,0.4)]" />
                   )}
@@ -174,7 +229,7 @@ const Index = () => {
               className="animate-fade-up"
               style={{ animationDuration: "300ms" }}
             >
-              {activeTab === "signin" ? <SignInForm /> : <SignUpForm />}
+              {activeTab === "signin" ? <SignInForm /> : activeTab === "signup" ? <SignUpForm /> : <HospitalRegisterForm />}
             </div>
           </div>
         </div>
