@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import bgImage from "@/assets/bg-gradient.png";
 
 const GoogleIcon = () => (
@@ -199,7 +199,7 @@ const HospitalRegisterForm = () => {
   }
 
   return (
-    <div className="space-y-3.5 max-h-[65vh] overflow-y-auto pr-1 scrollbar-thin">
+    <div className="space-y-3.5 max-h-[65vh] overflow-y-auto pr-1 scrollbar-themed">
       <AuthInput
         label="Hospital / Organization Name"
         placeholder="City General Hospital"
@@ -323,15 +323,28 @@ const HospitalRegisterForm = () => {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<"signin" | "signup" | "hospital">("signin");
+  const bgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!bgRef.current) return;
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
+      bgRef.current.style.transform = `translate(${x}px, ${y}px) scale(1.08)`;
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden grain-overlay">
-      {/* Background image with drift animation */}
+      {/* Background image with parallax */}
       <div
-        className="absolute inset-[-20px] bg-cover bg-center bg-no-repeat animate-bg-drift"
+        ref={bgRef}
+        className="absolute inset-[-40px] bg-cover bg-center bg-no-repeat transition-transform duration-[800ms] ease-out will-change-transform"
         style={{
           backgroundImage: `url(${bgImage})`,
-          backgroundSize: "120%",
+          transform: "scale(1.08)",
         }}
       />
 
