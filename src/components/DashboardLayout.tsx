@@ -3,7 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Building2, CalendarClock, LogOut, Menu, X, ChevronLeft
+  Building2, CalendarClock, LogOut, Menu, X, ChevronLeft, Calendar, FileText
 } from "lucide-react";
 
 const navItems = [
@@ -11,8 +11,10 @@ const navItems = [
   { title: "Doctors", path: "/doctors", icon: Stethoscope, roles: ["super_admin", "hospital_admin"] },
   { title: "Nurses", path: "/nurses", icon: HeartPulse, roles: ["super_admin", "hospital_admin"] },
   { title: "Patients", path: "/patients", icon: Users, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
+  { title: "Appointments", path: "/appointments", icon: Calendar, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
   { title: "Medicines", path: "/medicines", icon: Package, roles: ["super_admin", "hospital_admin"] },
   { title: "Lab Tests", path: "/lab-tests", icon: FlaskConical, roles: ["super_admin", "hospital_admin"] },
+  { title: "Lab Reports", path: "/lab-reports", icon: FileText, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
   { title: "Floors", path: "/floors", icon: Building2, roles: ["super_admin", "hospital_admin"] },
   { title: "Availability", path: "/availability", icon: CalendarClock, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
 ];

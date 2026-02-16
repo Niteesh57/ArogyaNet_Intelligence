@@ -133,6 +133,30 @@ export const searchApi = {
   usersForStaff: (q: string) => api.get(`/search/users-for-staff?q=${q}`),
 };
 
+// AI Agent
+export const agentApi = {
+  suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string }) =>
+    api.post("/agent/suggest-appointment", data),
+};
+
+// Appointments
+export const appointmentsApi = {
+  create: (data: any) => api.post("/appointments/", data),
+  list: (skip = 0, limit = 100) => api.get(`/appointments/?skip=${skip}&limit=${limit}`),
+  get: (id: string) => api.get(`/appointments/${id}`),
+  update: (id: string, data: any) => api.put(`/appointments/${id}`, data),
+  delete: (id: string) => api.delete(`/appointments/${id}`),
+};
+
+// Lab Reports
+export const labReportsApi = {
+  create: (data: any) => api.post("/lab-reports/", data),
+  list: (skip = 0, limit = 100) => api.get(`/lab-reports/?skip=${skip}&limit=${limit}`),
+  get: (id: string) => api.get(`/lab-reports/${id}`),
+  update: (id: string, data: any) => api.put(`/lab-reports/${id}`, data),
+  delete: (id: string) => api.delete(`/lab-reports/${id}`),
+};
+
 // Users
 export const usersApi = {
   me: () => api.get("/users/me"),

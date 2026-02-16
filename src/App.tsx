@@ -15,6 +15,8 @@ import Medicines from "./pages/Medicines";
 import LabTests from "./pages/LabTests";
 import Floors from "./pages/Floors";
 import Availability from "./pages/Availability";
+import Appointments from "./pages/Appointments";
+import LabReports from "./pages/LabReports";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +45,8 @@ const App = () => (
             <Route path="/lab-tests" element={<ProtectedPage><LabTests /></ProtectedPage>} />
             <Route path="/floors" element={<ProtectedPage><Floors /></ProtectedPage>} />
             <Route path="/availability" element={<ProtectedPage><Availability /></ProtectedPage>} />
+            <Route path="/appointments" element={<ProtectedPage><Appointments /></ProtectedPage>} />
+            <Route path="/lab-reports" element={<ProtectedPage><LabReports /></ProtectedPage>} />
             <Route path="/oauth-success" element={<OAuthSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
