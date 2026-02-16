@@ -3,10 +3,27 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import DashboardLayout from "@/components/DashboardLayout";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Doctors from "./pages/Doctors";
+import Nurses from "./pages/Nurses";
+import Patients from "./pages/Patients";
+import Inventory from "./pages/Inventory";
+import LabTests from "./pages/LabTests";
+import Floors from "./pages/Floors";
+import Availability from "./pages/Availability";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <DashboardLayout>{children}</DashboardLayout>
+  </ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -14,11 +31,20 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+            <Route path="/doctors" element={<ProtectedPage><Doctors /></ProtectedPage>} />
+            <Route path="/nurses" element={<ProtectedPage><Nurses /></ProtectedPage>} />
+            <Route path="/patients" element={<ProtectedPage><Patients /></ProtectedPage>} />
+            <Route path="/inventory" element={<ProtectedPage><Inventory /></ProtectedPage>} />
+            <Route path="/lab-tests" element={<ProtectedPage><LabTests /></ProtectedPage>} />
+            <Route path="/floors" element={<ProtectedPage><Floors /></ProtectedPage>} />
+            <Route path="/availability" element={<ProtectedPage><Availability /></ProtectedPage>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

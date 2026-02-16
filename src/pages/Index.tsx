@@ -1,4 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { authApi, hospitalsApi } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 import bgImage from "@/assets/bg-gradient.png";
 
 const GoogleIcon = () => (
@@ -23,150 +27,150 @@ const BuildingIcon = () => (
 );
 
 const AuthInput = ({
-  label,
-  type = "text",
-  placeholder,
-  delay = 0,
-  hint,
-  value,
-  onChange,
-  error,
+  label, type = "text", placeholder, delay = 0, hint, value, onChange, error,
 }: {
-  label: string;
-  type?: string;
-  placeholder: string;
-  delay?: number;
-  hint?: string;
-  value?: string;
-  onChange?: (v: string) => void;
-  error?: string;
+  label: string; type?: string; placeholder: string; delay?: number;
+  hint?: string; value?: string; onChange?: (v: string) => void; error?: string;
 }) => (
-  <div
-    className="opacity-0 animate-fade-up space-y-1.5"
-    style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
-  >
-    <label className="block text-sm font-medium tracking-wide text-foreground/70">
-      {label}
-    </label>
+  <div className="opacity-0 animate-fade-up space-y-1.5" style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}>
+    <label className="block text-sm font-medium tracking-wide text-foreground/70">{label}</label>
     <div className="relative group">
       <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
+        type={type} placeholder={placeholder} value={value}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className={`w-full bg-background/40 border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 focus:shadow-[0_0_20px_hsla(170,66%,51%,0.1)] ${error ? 'border-destructive/70' : 'border-border/50'}`}
       />
       <div className="absolute bottom-0 left-0 h-[2px] w-full scale-x-0 bg-gradient-to-r from-primary to-secondary transition-transform duration-300 origin-left group-focus-within:scale-x-100 rounded-full" />
     </div>
-    {hint && !error && (
-      <p className="text-xs text-muted-foreground/60 pl-1">{hint}</p>
-    )}
-    {error && (
-      <p className="text-xs text-destructive pl-1 animate-fade-up" style={{ animationDuration: "200ms" }}>{error}</p>
-    )}
+    {hint && !error && <p className="text-xs text-muted-foreground/60 pl-1">{hint}</p>}
+    {error && <p className="text-xs text-destructive pl-1 animate-fade-up" style={{ animationDuration: "200ms" }}>{error}</p>}
   </div>
 );
 
-const SignInForm = () => (
-  <div className="space-y-5">
-    <AuthInput label="Email Address" type="email" placeholder="you@healthcare.org" delay={100} />
-    <AuthInput label="Password" type="password" placeholder="••••••••••" delay={200} />
-    <div className="flex justify-end opacity-0 animate-fade-up" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
-      <button className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200">
-        Forgot Password?
-      </button>
-    </div>
-    <div className="opacity-0 animate-fade-up" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>
-      <button className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0">
-        Access Secure Portal
-      </button>
-    </div>
-    <div className="flex items-center gap-4 opacity-0 animate-fade-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
-      <div className="flex-1 h-px bg-border/40" />
-      <span className="text-xs text-muted-foreground tracking-widest uppercase">or</span>
-      <div className="flex-1 h-px bg-border/40" />
-    </div>
-    <div className="opacity-0 animate-fade-up" style={{ animationDelay: "600ms", animationFillMode: "forwards" }}>
-      <button className="w-full py-3 rounded-lg font-medium text-sm bg-white/95 text-primary-foreground flex items-center justify-center gap-3 transition-all duration-300 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5">
-        <GoogleIcon />
-        Continue with Google
-      </button>
-    </div>
-  </div>
-);
+const SignInForm = () => {
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-const SignUpForm = () => (
-  <div className="space-y-5">
-    <AuthInput label="Full Name" placeholder="Dr. Jane Smith" delay={100} />
-    <AuthInput label="Email Address" type="email" placeholder="you@healthcare.org" delay={200} />
-    <AuthInput label="Password" type="password" placeholder="••••••••••" delay={300} />
-    <AuthInput label="Confirm Password" type="password" placeholder="••••••••••" delay={400} />
-    <div className="opacity-0 animate-fade-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
-      <button className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0">
-        Create Secure Account
-      </button>
+  const handleSubmit = async () => {
+    if (!email || !password) return;
+    setLoading(true);
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      toast({ title: "Login Failed", description: err?.response?.data?.detail || "Invalid credentials", variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <AuthInput label="Email Address" type="email" placeholder="you@healthcare.org" delay={100} value={email} onChange={setEmail} />
+      <AuthInput label="Password" type="password" placeholder="••••••••••" delay={200} value={password} onChange={setPassword} />
+      <div className="flex justify-end opacity-0 animate-fade-up" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
+        <button className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200">Forgot Password?</button>
+      </div>
+      <div className="opacity-0 animate-fade-up" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>
+        <button onClick={handleSubmit} disabled={loading} className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50">
+          {loading ? "Signing in..." : "Access Secure Portal"}
+        </button>
+      </div>
+      <div className="flex items-center gap-4 opacity-0 animate-fade-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
+        <div className="flex-1 h-px bg-border/40" /><span className="text-xs text-muted-foreground tracking-widest uppercase">or</span><div className="flex-1 h-px bg-border/40" />
+      </div>
+      <div className="opacity-0 animate-fade-up" style={{ animationDelay: "600ms", animationFillMode: "forwards" }}>
+        <button className="w-full py-3 rounded-lg font-medium text-sm bg-white/95 text-primary-foreground flex items-center justify-center gap-3 transition-all duration-300 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5">
+          <GoogleIcon />Continue with Google
+        </button>
+      </div>
     </div>
-    <p className="text-center text-xs text-muted-foreground opacity-0 animate-fade-up" style={{ animationDelay: "600ms", animationFillMode: "forwards" }}>
-      By creating an account, you agree to our{" "}
-      <span className="text-primary/80 hover:text-primary cursor-pointer transition-colors">Privacy Policy</span>.
-    </p>
-  </div>
-);
+  );
+};
+
+const SignUpForm = () => {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirmPassword: "" });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (form.password !== form.confirmPassword) { toast({ title: "Passwords don't match", variant: "destructive" }); return; }
+    setLoading(true);
+    try {
+      await authApi.register({ user_in: { email: form.email, password: form.password, full_name: form.full_name } });
+      toast({ title: "Account created! Please sign in." });
+    } catch (err: any) {
+      toast({ title: "Registration failed", description: err?.response?.data?.detail || "Try again", variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <AuthInput label="Full Name" placeholder="Dr. Jane Smith" delay={100} value={form.full_name} onChange={(v) => setForm((p) => ({ ...p, full_name: v }))} />
+      <AuthInput label="Email Address" type="email" placeholder="you@healthcare.org" delay={200} value={form.email} onChange={(v) => setForm((p) => ({ ...p, email: v }))} />
+      <AuthInput label="Password" type="password" placeholder="••••••••••" delay={300} value={form.password} onChange={(v) => setForm((p) => ({ ...p, password: v }))} />
+      <AuthInput label="Confirm Password" type="password" placeholder="••••••••••" delay={400} value={form.confirmPassword} onChange={(v) => setForm((p) => ({ ...p, confirmPassword: v }))} />
+      <div className="opacity-0 animate-fade-up" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
+        <button onClick={handleSubmit} disabled={loading} className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50">
+          {loading ? "Creating..." : "Create Secure Account"}
+        </button>
+      </div>
+      <p className="text-center text-xs text-muted-foreground opacity-0 animate-fade-up" style={{ animationDelay: "600ms", animationFillMode: "forwards" }}>
+        By creating an account, you agree to our <span className="text-primary/80 hover:text-primary cursor-pointer transition-colors">Privacy Policy</span>.
+      </p>
+    </div>
+  );
+};
 
 interface HospitalFormErrors {
-  name?: string;
-  hospitalId?: string;
-  specialization?: string;
-  location?: string;
-  description?: string;
-  email?: string;
-  password?: string;
+  name?: string; hospitalId?: string; specialization?: string;
+  location?: string; description?: string; email?: string; password?: string;
 }
 
 const HospitalRegisterForm = () => {
-  const [form, setForm] = useState({
-    name: "", hospitalId: "", specialization: "", location: "", description: "", email: "", password: "",
-  });
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: "", hospitalId: "", specialization: "", location: "", description: "", email: "", password: "" });
   const [errors, setErrors] = useState<HospitalFormErrors>({});
   const [registered, setRegistered] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const updateField = useCallback((field: string) => (value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: undefined }));
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
   }, []);
 
   const validate = (): boolean => {
     const e: HospitalFormErrors = {};
     if (!form.name.trim()) e.name = "Hospital name is required";
     else if (form.name.trim().length < 3) e.name = "Name must be at least 3 characters";
-
     if (!form.hospitalId.trim()) e.hospitalId = "Hospital ID is required";
     else if (!/^[A-Za-z0-9-]{4,}$/.test(form.hospitalId.trim())) e.hospitalId = "Use letters, numbers, hyphens (min 4 chars)";
-
     if (!form.specialization) e.specialization = "Select a specialization";
-
     if (!form.location.trim()) e.location = "Location is required";
     else if (form.location.trim().length < 5) e.location = "Please provide a full address";
-
     if (!form.description.trim()) e.description = "Description is required";
-    else if (form.description.trim().length < 20) e.description = "Minimum 20 characters for a proper description";
-    else if (form.description.trim().length > 500) e.description = "Maximum 500 characters allowed";
-
+    else if (form.description.trim().length < 20) e.description = "Minimum 20 characters";
+    else if (form.description.trim().length > 500) e.description = "Maximum 500 characters";
     if (!form.email.trim()) e.email = "Admin email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = "Enter a valid email address";
-
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = "Enter a valid email";
     if (!form.password) e.password = "Password is required";
     else if (form.password.length < 8) e.password = "Minimum 8 characters";
-    else if (!/(?=.*[A-Z])(?=.*[0-9])/.test(form.password)) e.password = "Include at least 1 uppercase letter and 1 number";
-
+    else if (!/(?=.*[A-Z])(?=.*[0-9])/.test(form.password)) e.password = "Include 1 uppercase and 1 number";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validate()) {
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      await authApi.register({
+        user_in: { email: form.email, password: form.password, full_name: form.name, role: "hospital_admin" },
+        hospital_in: { name: form.name, license_number: form.hospitalId, specialization: form.specialization, address: form.location, description: form.description, admin_email: form.email },
+      });
       setRegistered(true);
-    }
+    } catch (err: any) {
+      toast({ title: "Registration failed", description: err?.response?.data?.detail || "Try again", variant: "destructive" });
+    } finally { setLoading(false); }
   };
 
   if (registered) {
@@ -174,63 +178,31 @@ const HospitalRegisterForm = () => {
       <div className="text-center space-y-6 py-8 animate-fade-up" style={{ animationDuration: "400ms" }}>
         <div className="w-16 h-16 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
           </svg>
         </div>
         <div>
           <h3 className="font-serif text-2xl font-semibold text-foreground mb-2">Registration Successful</h3>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            <strong className="text-foreground">{form.name}</strong> has been registered. You can now manage your organization.
+            <strong className="text-foreground">{form.name}</strong> has been registered. Sign in to manage your organization.
           </p>
         </div>
-        <button
-          onClick={() => {/* navigate to dashboard in future */}}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5"
-        >
-          <BuildingIcon />
-          Open Organization Dashboard
+        <button onClick={() => window.location.reload()} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5">
+          <BuildingIcon />Sign In Now
         </button>
-        <p className="text-xs text-muted-foreground">
-          Manage doctors, nurses &amp; patients from your dashboard.
-        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3.5 max-h-[65vh] overflow-y-auto pr-1 scrollbar-themed">
-      <AuthInput
-        label="Hospital / Organization Name"
-        placeholder="City General Hospital"
-        delay={100}
-        hint="Official registered name of your healthcare organization"
-        value={form.name}
-        onChange={updateField("name")}
-        error={errors.name}
-      />
-      <AuthInput
-        label="Hospital ID / License No."
-        placeholder="HOS-2026-XXXX"
-        delay={130}
-        hint="Alphanumeric ID from your licensing authority"
-        value={form.hospitalId}
-        onChange={updateField("hospitalId")}
-        error={errors.hospitalId}
-      />
-      <div
-        className="opacity-0 animate-fade-up space-y-1.5"
-        style={{ animationDelay: "160ms", animationFillMode: "forwards" }}
-      >
-        <label className="block text-sm font-medium tracking-wide text-foreground/70">
-          Specialization
-        </label>
+      <AuthInput label="Hospital / Organization Name" placeholder="City General Hospital" delay={100} hint="Official registered name" value={form.name} onChange={updateField("name")} error={errors.name} />
+      <AuthInput label="Hospital ID / License No." placeholder="HOS-2026-XXXX" delay={130} hint="Alphanumeric ID from licensing authority" value={form.hospitalId} onChange={updateField("hospitalId")} error={errors.hospitalId} />
+      <div className="opacity-0 animate-fade-up space-y-1.5" style={{ animationDelay: "160ms", animationFillMode: "forwards" }}>
+        <label className="block text-sm font-medium tracking-wide text-foreground/70">Specialization</label>
         <div className="relative group">
-          <select
-            value={form.specialization}
-            onChange={(e) => { setForm(p => ({ ...p, specialization: e.target.value })); setErrors(p => ({ ...p, specialization: undefined })); }}
-            className={`w-full bg-background/40 border rounded-lg px-4 py-3 text-sm text-foreground outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 focus:shadow-[0_0_20px_hsla(170,66%,51%,0.1)] appearance-none cursor-pointer ${errors.specialization ? 'border-destructive/70' : 'border-border/50'}`}
-          >
+          <select value={form.specialization} onChange={(e) => { setForm((p) => ({ ...p, specialization: e.target.value })); setErrors((p) => ({ ...p, specialization: undefined })); }}
+            className={`w-full bg-background/40 border rounded-lg px-4 py-3 text-sm text-foreground outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 appearance-none cursor-pointer ${errors.specialization ? 'border-destructive/70' : 'border-border/50'}`}>
             <option value="" className="bg-background text-foreground">Select specialization</option>
             <option value="general" className="bg-background text-foreground">General Medicine</option>
             <option value="cardiology" className="bg-background text-foreground">Cardiology</option>
@@ -242,76 +214,27 @@ const HospitalRegisterForm = () => {
           </select>
           <div className="absolute bottom-0 left-0 h-[2px] w-full scale-x-0 bg-gradient-to-r from-primary to-secondary transition-transform duration-300 origin-left group-focus-within:scale-x-100 rounded-full" />
         </div>
-        {!errors.specialization && (
-          <p className="text-xs text-muted-foreground/60 pl-1">Primary area of medical practice</p>
-        )}
-        {errors.specialization && (
-          <p className="text-xs text-destructive pl-1 animate-fade-up" style={{ animationDuration: "200ms" }}>{errors.specialization}</p>
-        )}
+        {errors.specialization && <p className="text-xs text-destructive pl-1">{errors.specialization}</p>}
       </div>
-      <AuthInput
-        label="Location / Address"
-        placeholder="123 Medical Ave, City, State"
-        delay={190}
-        hint="Full address including city and state"
-        value={form.location}
-        onChange={updateField("location")}
-        error={errors.location}
-      />
-      <div
-        className="opacity-0 animate-fade-up space-y-1.5"
-        style={{ animationDelay: "220ms", animationFillMode: "forwards" }}
-      >
-        <label className="block text-sm font-medium tracking-wide text-foreground/70">
-          Description
-        </label>
+      <AuthInput label="Location / Address" placeholder="123 Medical Ave, City, State" delay={190} hint="Full address" value={form.location} onChange={updateField("location")} error={errors.location} />
+      <div className="opacity-0 animate-fade-up space-y-1.5" style={{ animationDelay: "220ms", animationFillMode: "forwards" }}>
+        <label className="block text-sm font-medium tracking-wide text-foreground/70">Description</label>
         <div className="relative group">
-          <textarea
-            rows={3}
-            placeholder="Brief description of your hospital or organization..."
-            value={form.description}
-            onChange={(e) => { setForm(p => ({ ...p, description: e.target.value })); setErrors(p => ({ ...p, description: undefined })); }}
-            className={`w-full bg-background/40 border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 focus:shadow-[0_0_20px_hsla(170,66%,51%,0.1)] resize-none ${errors.description ? 'border-destructive/70' : 'border-border/50'}`}
-          />
+          <textarea rows={3} placeholder="Brief description of your hospital..." value={form.description}
+            onChange={(e) => { setForm((p) => ({ ...p, description: e.target.value })); setErrors((p) => ({ ...p, description: undefined })); }}
+            className={`w-full bg-background/40 border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-primary/60 focus:bg-background/60 resize-none ${errors.description ? 'border-destructive/70' : 'border-border/50'}`} />
           <div className="absolute bottom-0 left-0 h-[2px] w-full scale-x-0 bg-gradient-to-r from-primary to-secondary transition-transform duration-300 origin-left group-focus-within:scale-x-100 rounded-full" />
         </div>
         <div className="flex justify-between px-1">
-          {errors.description ? (
-            <p className="text-xs text-destructive animate-fade-up" style={{ animationDuration: "200ms" }}>{errors.description}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground/60">Services, beds, accreditations, etc.</p>
-          )}
-          <span className={`text-xs ${form.description.length > 500 ? 'text-destructive' : 'text-muted-foreground/40'}`}>
-            {form.description.length}/500
-          </span>
+          {errors.description ? <p className="text-xs text-destructive">{errors.description}</p> : <p className="text-xs text-muted-foreground/60">Services, beds, accreditations</p>}
+          <span className={`text-xs ${form.description.length > 500 ? 'text-destructive' : 'text-muted-foreground/40'}`}>{form.description.length}/500</span>
         </div>
       </div>
-      <AuthInput
-        label="Admin Email"
-        type="email"
-        placeholder="admin@hospital.org"
-        delay={250}
-        hint="Primary administrator email for this organization"
-        value={form.email}
-        onChange={updateField("email")}
-        error={errors.email}
-      />
-      <AuthInput
-        label="Password"
-        type="password"
-        placeholder="••••••••••"
-        delay={280}
-        hint="Min 8 chars, 1 uppercase, 1 number"
-        value={form.password}
-        onChange={updateField("password")}
-        error={errors.password}
-      />
+      <AuthInput label="Admin Email" type="email" placeholder="admin@hospital.org" delay={250} value={form.email} onChange={updateField("email")} error={errors.email} />
+      <AuthInput label="Password" type="password" placeholder="••••••••••" delay={280} hint="Min 8 chars, 1 uppercase, 1 number" value={form.password} onChange={updateField("password")} error={errors.password} />
       <div className="opacity-0 animate-fade-up pt-1" style={{ animationDelay: "310ms", animationFillMode: "forwards" }}>
-        <button
-          onClick={handleSubmit}
-          className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0"
-        >
-          Register Organization
+        <button onClick={handleSubmit} disabled={loading} className="w-full py-3.5 rounded-lg font-semibold text-sm tracking-wide bg-gradient-to-r from-secondary to-primary text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsla(170,66%,51%,0.3)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50">
+          {loading ? "Registering..." : "Register Organization"}
         </button>
       </div>
       <p className="text-center text-xs text-muted-foreground opacity-0 animate-fade-up" style={{ animationDelay: "340ms", animationFillMode: "forwards" }}>
@@ -324,6 +247,12 @@ const HospitalRegisterForm = () => {
 const Index = () => {
   const [activeTab, setActiveTab] = useState<"signin" | "signup" | "hospital">("signin");
   const bgRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate("/dashboard");
+  }, [user, navigate]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -338,99 +267,39 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden grain-overlay">
-      {/* Background image with parallax */}
-      <div
-        ref={bgRef}
-        className="absolute inset-[-40px] bg-cover bg-center bg-no-repeat transition-transform duration-[800ms] ease-out will-change-transform"
-        style={{
-          backgroundImage: `url(${bgImage})`,
-          transform: "scale(1.08)",
-        }}
-      />
-
-      {/* Animated floating glow orbs */}
+      <div ref={bgRef} className="absolute inset-[-40px] bg-cover bg-center bg-no-repeat transition-transform duration-[800ms] ease-out will-change-transform" style={{ backgroundImage: `url(${bgImage})`, transform: "scale(1.08)" }} />
       <div className="absolute top-[20%] left-[15%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,hsla(170,66%,51%,0.12)_0%,transparent_70%)] animate-float-glow" />
       <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,hsla(189,74%,41%,0.1)_0%,transparent_70%)] animate-float-glow" style={{ animationDelay: "-4s" }} />
       <div className="absolute top-[60%] left-[50%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,hsla(170,66%,51%,0.06)_0%,transparent_70%)] animate-float-glow" style={{ animationDelay: "-8s" }} />
-
-      {/* Radial glow overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,hsla(170,66%,51%,0.08)_0%,transparent_60%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsla(189,74%,41%,0.06)_0%,transparent_50%)]" />
 
-      {/* Content */}
       <div className="relative z-10 flex min-h-screen flex-col lg:flex-row items-center justify-center px-6 py-12 lg:px-16 gap-8 lg:gap-0">
-
-        {/* Left — Branding (40%) */}
         <div className="w-full lg:w-[40%] flex flex-col justify-center lg:pr-12">
           <div className="space-y-6 max-w-md mx-auto lg:mx-0">
             <div>
-              <h1
-                className="font-serif text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground leading-[0.9] opacity-0 animate-fade-up"
-                style={{ animationDelay: "200ms", animationFillMode: "forwards" }}
-              >
-                LIFE
-                <br />
-                HEALTH
-              </h1>
-              <p
-                className="mt-3 font-serif text-2xl md:text-3xl font-light tracking-[0.3em] text-primary/70 opacity-0 animate-fade-up"
-                style={{ animationDelay: "400ms", animationFillMode: "forwards" }}
-              >
-                CRM
-              </p>
+              <h1 className="font-serif text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground leading-[0.9] opacity-0 animate-fade-up" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>LIFE<br />HEALTH</h1>
+              <p className="mt-3 font-serif text-2xl md:text-3xl font-light tracking-[0.3em] text-primary/70 opacity-0 animate-fade-up" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>CRM</p>
             </div>
-            <div
-              className="h-px w-16 bg-gradient-to-r from-primary/60 to-transparent opacity-0 animate-fade-up"
-              style={{ animationDelay: "600ms", animationFillMode: "forwards" }}
-            />
-            <p
-              className="text-lg md:text-xl font-light tracking-wide text-foreground/80 leading-relaxed opacity-0 animate-fade-up"
-              style={{ animationDelay: "700ms", animationFillMode: "forwards" }}
-            >
-              Secure Systems for Modern Care
-            </p>
-            <p
-              className="text-sm text-muted-foreground leading-relaxed max-w-xs opacity-0 animate-fade-up"
-              style={{ animationDelay: "900ms", animationFillMode: "forwards" }}
-            >
-              Trusted by healthcare professionals for intelligent patient management.
-            </p>
+            <div className="h-px w-16 bg-gradient-to-r from-primary/60 to-transparent opacity-0 animate-fade-up" style={{ animationDelay: "600ms", animationFillMode: "forwards" }} />
+            <p className="text-lg md:text-xl font-light tracking-wide text-foreground/80 leading-relaxed opacity-0 animate-fade-up" style={{ animationDelay: "700ms", animationFillMode: "forwards" }}>Secure Systems for Modern Care</p>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs opacity-0 animate-fade-up" style={{ animationDelay: "900ms", animationFillMode: "forwards" }}>Trusted by healthcare professionals for intelligent patient management.</p>
           </div>
         </div>
 
-        {/* Right — Auth Panel (60%) */}
         <div className="w-full lg:w-[60%] flex justify-center lg:justify-end">
-          <div
-            className="w-full max-w-md glass-panel rounded-2xl p-8 md:p-10 opacity-0 animate-slide-in-right"
-            style={{ animationDelay: "500ms", animationFillMode: "forwards" }}
-          >
-            {/* Tab Toggle */}
+          <div className="w-full max-w-md glass-panel rounded-2xl p-8 md:p-10 opacity-0 animate-slide-in-right" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
             <div className="flex mb-8 border-b border-border/30">
               {(["signin", "signup", "hospital"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
+                <button key={tab} onClick={() => setActiveTab(tab)}
                   className="relative flex-1 pb-3 text-sm font-medium tracking-wide transition-colors duration-200"
-                  style={{
-                    color: activeTab === tab
-                      ? "hsl(var(--foreground))"
-                      : "hsl(var(--muted-foreground))",
-                  }}
-                >
+                  style={{ color: activeTab === tab ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}>
                   {tab === "signin" ? "Sign In" : tab === "signup" ? "Create Account" : "Hospital"}
-                  {activeTab === tab && (
-                    <span className="absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r from-primary to-secondary animate-underline-sweep rounded-full shadow-[0_0_8px_hsla(170,66%,51%,0.4)]" />
-                  )}
+                  {activeTab === tab && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r from-primary to-secondary animate-underline-sweep rounded-full shadow-[0_0_8px_hsla(170,66%,51%,0.4)]" />}
                 </button>
               ))}
             </div>
-
-            {/* Form Content */}
-            <div
-              key={activeTab}
-              className="animate-fade-up"
-              style={{ animationDuration: "300ms" }}
-            >
+            <div key={activeTab} className="animate-fade-up" style={{ animationDuration: "300ms" }}>
               {activeTab === "signin" ? <SignInForm /> : activeTab === "signup" ? <SignUpForm /> : <HospitalRegisterForm />}
             </div>
           </div>
