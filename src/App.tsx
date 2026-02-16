@@ -11,11 +11,11 @@ import Dashboard from "./pages/Dashboard";
 import Doctors from "./pages/Doctors";
 import Nurses from "./pages/Nurses";
 import Patients from "./pages/Patients";
-import Inventory from "./pages/Inventory";
+import Medicines from "./pages/Medicines";
 import LabTests from "./pages/LabTests";
 import Floors from "./pages/Floors";
 import Availability from "./pages/Availability";
-import GoogleCallback from "./pages/GoogleCallback";
+import OAuthSuccess from "./pages/OAuthSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,11 +39,11 @@ const App = () => (
             <Route path="/doctors" element={<ProtectedPage><Doctors /></ProtectedPage>} />
             <Route path="/nurses" element={<ProtectedPage><Nurses /></ProtectedPage>} />
             <Route path="/patients" element={<ProtectedPage><Patients /></ProtectedPage>} />
-            <Route path="/inventory" element={<ProtectedPage><Inventory /></ProtectedPage>} />
+            <Route path="/medicines" element={<ProtectedPage><Medicines /></ProtectedPage>} />
             <Route path="/lab-tests" element={<ProtectedPage><LabTests /></ProtectedPage>} />
             <Route path="/floors" element={<ProtectedPage><Floors /></ProtectedPage>} />
             <Route path="/availability" element={<ProtectedPage><Availability /></ProtectedPage>} />
-            <Route path="/auth/google/callback" element={<GoogleCallback />} />
+            <Route path="/oauth-success" element={<OAuthSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

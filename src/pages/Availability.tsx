@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { availabilityApi, adminApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, Shimmer } from "@/components/GlassUI";
+import { PageHeader, GlassButton, GlassModal, GlassInput, GlassSelect, Shimmer } from "@/components/GlassUI";
+import { StaffSearch } from "@/components/StaffSearch";
 import { toast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
@@ -13,67 +15,129 @@ interface Avail {
 
 const Availability = () => {
   const { isAdmin } = useAuth();
-  const [items, setItems] = useState<Avail[]>([]);
+  const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ staff_type: "doctor", staff_id: "", day_of_week: "monday", start_time: "09:00", end_time: "17:00" });
+  const [form, setForm] = useState({ staff_type: "doctor" as "doctor" | "nurse", start_time: "09:00", end_time: "17:00" });
+  const [selectedStaff, setSelectedStaff] = useState<any[]>([]);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
 
-  const fetch = () => { setLoading(true); availabilityApi.list().then((r) => setItems(r.data)).catch(() => { }).finally(() => setLoading(false)); };
+  const fetch = () => {
+    setLoading(true);
+    availabilityApi.list()
+      .then((r) => setStats(r.data || {}))
+      .catch(() => { })
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { fetch(); }, []);
 
   const handleCreate = async () => {
-    try { await adminApi.createAvailability(form); toast({ title: "Availability created" }); setModal(false); fetch(); }
-    catch { toast({ title: "Error", variant: "destructive" }); }
+    if (selectedStaff.length === 0 || selectedDays.length === 0) {
+      toast({ title: "Validation Error", description: "Please select at least one staff member and one day.", variant: "destructive" });
+      return;
+    }
+
+    setCreating(true);
+    let successCount = 0;
+    try {
+      const promises = [];
+      for (const staff of selectedStaff) {
+        for (const day of selectedDays) {
+          promises.push(
+            adminApi.createAvailability({
+              staff_type: form.staff_type,
+              staff_id: staff.id,
+              day_of_week: day,
+              start_time: form.start_time,
+              end_time: form.end_time,
+            }).then(() => successCount++).catch((e) => console.error(e))
+          );
+        }
+      }
+      await Promise.all(promises);
+      toast({ title: "Operation Complete", description: `Created ${successCount} availability slots.` });
+      setModal(false);
+      fetch();
+      // Reset selection
+      setSelectedStaff([]);
+      setSelectedDays([]);
+    } catch {
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
   };
 
-  // Group by day
-  const grouped = DAYS.map((day) => ({
-    day,
-    slots: items.filter((i) => i.day_of_week === day),
-  }));
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
 
   return (
     <div>
       <PageHeader title="Availability Scheduling" action={
-        isAdmin ? <GlassButton onClick={() => { setForm({ staff_type: "doctor", staff_id: "", day_of_week: "monday", start_time: "09:00", end_time: "17:00" }); setModal(true); }}><Plus className="w-4 h-4 mr-1 inline" />Add Slot</GlassButton> : undefined
+        isAdmin ? <GlassButton onClick={() => { setForm({ staff_type: "doctor", start_time: "09:00", end_time: "17:00" }); setSelectedStaff([]); setSelectedDays([]); setModal(true); }}><Plus className="w-4 h-4 mr-1 inline" />Add Slot</GlassButton> : undefined
       } />
       {loading ? <Shimmer /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-up">
-          {grouped.map((g) => (
-            <div key={g.day} className="dashboard-card p-4 space-y-3">
+          {DAYS.map((day) => (
+            <div key={day} className="dashboard-card p-6 space-y-3">
               <h3 className="text-lg font-semibold text-foreground capitalize flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary/60" />
-                {g.day}
+                {day}
               </h3>
-              {g.slots.length === 0 ? (
-                <p className="text-xs text-muted-foreground pl-4">No slots available</p>
-              ) : (
-                <div className="space-y-2">
-                  {g.slots.map((s) => (
-                    <div key={s.id} className="bg-muted/50 rounded-md px-3 py-2 text-sm border border-border/50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-primary font-medium capitalize">{s.staff_type}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase">{s.staff_id}</span>
-                      </div>
-                      <div className="text-foreground mt-0.5 font-mono text-xs">{s.start_time} – {s.end_time}</div>
-                    </div>
-                  ))}
+              <div className="flex items-baseline gap-2">
+                <div className="text-4xl font-bold text-primary">
+                  {stats[day] || 0}
                 </div>
-              )}
+                <div className="text-sm text-muted-foreground">
+                  {stats[day] === 1 ? 'doctor' : 'doctors'} available
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
       <GlassModal open={modal} onClose={() => setModal(false)} title="Add Availability">
         <div className="space-y-4 pt-2">
-          <GlassSelect label="Staff Type" value={form.staff_type} onChange={(v) => setForm((p) => ({ ...p, staff_type: v }))} options={[{ value: "doctor", label: "Doctor" }, { value: "nurse", label: "Nurse" }]} />
-          <GlassInput label="Staff ID" value={form.staff_id} onChange={(v) => setForm((p) => ({ ...p, staff_id: v }))} placeholder="Doctor or Nurse ID" />
-          <GlassSelect label="Day" value={form.day_of_week} onChange={(v) => setForm((p) => ({ ...p, day_of_week: v }))} options={DAYS.map((d) => ({ value: d, label: d.charAt(0).toUpperCase() + d.slice(1) }))} />
+          <GlassSelect label="Staff Type" value={form.staff_type} onChange={(v) => { setForm((p) => ({ ...p, staff_type: v as "doctor" | "nurse" })); setSelectedStaff([]); }} options={[{ value: "doctor", label: "Doctor" }, { value: "nurse", label: "Nurse" }]} />
+
+          <StaffSearch
+            type={form.staff_type}
+            onSelect={(staff) => setSelectedStaff(staff)}
+            label={`Select ${form.staff_type === "doctor" ? "Doctors" : "Nurses"}`}
+            placeholder={`Search for ${form.staff_type}s...`}
+          />
+          {selectedStaff.length > 0 && <p className="text-xs text-muted-foreground">{selectedStaff.length} selected</p>}
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground">Select Days</label>
+            <div className="flex flex-wrap gap-2">
+              {DAYS.map((day) => (
+                <button
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
+                    selectedDays.includes(day)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-input hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {day.charAt(0).toUpperCase() + day.slice(1)}
+                  {selectedDays.includes(day) && <Check className="w-3 h-3 inline ml-1" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <GlassInput label="Start Time" value={form.start_time} onChange={(v) => setForm((p) => ({ ...p, start_time: v }))} type="time" />
             <GlassInput label="End Time" value={form.end_time} onChange={(v) => setForm((p) => ({ ...p, end_time: v }))} type="time" />
           </div>
-          <GlassButton onClick={handleCreate} className="w-full">Create Slot</GlassButton>
+          <GlassButton onClick={handleCreate} disabled={creating} className="w-full">
+            {creating ? "Creating..." : "Create Slots"}
+          </GlassButton>
         </div>
       </GlassModal>
     </div>

@@ -10,7 +10,7 @@ interface Medicine {
   quantity: number; price: number; hospital_id: string; created_at: string; updated_at: string;
 }
 
-const Inventory = () => {
+const Medicines = () => {
   const { isAdmin, user } = useAuth();
   const [items, setItems] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +20,7 @@ const Inventory = () => {
   const [form, setForm] = useState({ name: "", unique_code: "", description: "", quantity: "", price: "", hospital_id: "" });
   const [stockQty, setStockQty] = useState("");
 
-  const fetch = () => { setLoading(true); inventoryApi.list().then((r) => setItems(r.data)).catch(() => {}).finally(() => setLoading(false)); };
+  const fetch = () => { setLoading(true); inventoryApi.list().then((r) => setItems(r.data)).catch(() => { }).finally(() => setLoading(false)); };
   useEffect(() => { fetch(); }, []);
 
   const filtered = items.filter((i) => (i.name + i.unique_code).toLowerCase().includes(search.toLowerCase()));
@@ -56,7 +56,7 @@ const Inventory = () => {
 
   return (
     <div>
-      <PageHeader title="Inventory" action={
+      <PageHeader title="Medicines" action={
         <div className="flex items-center gap-3">
           <SearchBar value={search} onChange={setSearch} />
           {isAdmin && <GlassButton onClick={() => { setForm({ name: "", unique_code: "", description: "", quantity: "0", price: "", hospital_id: user?.hospital_id || "" }); setModal("create"); }}><Plus className="w-4 h-4 mr-1 inline" />Add Medicine</GlassButton>}
@@ -107,4 +107,4 @@ const Inventory = () => {
   );
 };
 
-export default Inventory;
+export default Medicines;

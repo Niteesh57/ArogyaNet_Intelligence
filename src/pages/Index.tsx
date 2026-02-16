@@ -33,28 +33,54 @@ const AuthInput = ({
 }) => (
   <div className="space-y-2 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
     <label className="block text-sm font-medium text-foreground">{label}</label>
-    <div className="relative">
-      <input
-        type={type} placeholder={placeholder} value={value}
-        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        className={`w-full bg-background border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${error ? 'border-destructive focus:ring-destructive' : 'border-input'}`}
-      />
-    </div>
+    <input
+      type={type} placeholder={placeholder} value={value}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+      className={`w-full bg-background border rounded-md px-3 py-2 text-sm text-foreground text-left placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${error ? 'border-destructive focus:ring-destructive' : 'border-input'}`}
+    />
     {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
     {error && <p className="text-xs text-destructive animate-fade-up">{error}</p>}
   </div>
 );
 
-import { useGoogleLogin } from "@react-oauth/google";
+const AuthTextArea = ({
+  label, placeholder, delay = 0, hint, value, onChange, error, rows = 3,
+}: {
+  label: string; placeholder: string; delay?: number;
+  hint?: string; value?: string; onChange?: (v: string) => void; error?: string; rows?: number;
+}) => (
+  <div className="space-y-2 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
+    <label className="block text-sm font-medium text-foreground">{label}</label>
+    <textarea
+      placeholder={placeholder} value={value} rows={rows}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+      className={`w-full bg-background border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none text-left ${error ? 'border-destructive focus:ring-destructive' : 'border-input'}`}
+    />
+    {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
+    {error && <p className="text-xs text-destructive animate-fade-up">{error}</p>}
+  </div>
+);
+
+
 
 const SignInForm = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
 
+  const validate = () => {
+    const e: { email?: string; password?: string } = {};
+    if (!email) e.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = "Invalid email format";
+    if (!password) e.password = "Password is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const handleSubmit = async () => {
-    if (!email || !password) return;
+    if (!validate()) return;
     setLoading(true);
     try {
       await login(email, password);
@@ -63,10 +89,9 @@ const SignInForm = () => {
     } finally { setLoading(false); }
   };
 
-  const handleGoogleLogin = useGoogleLogin({
-    ux_mode: "redirect",
-    redirect_uri: "http://localhost:8080/auth/google/callback",
-  });
+  const handleGoogleLogin = () => {
+    window.location.href = `${import.meta.env.VITE_API_URL}/auth/login/google`;
+  };
 
   return (
     <div className="space-y-4">
@@ -75,8 +100,8 @@ const SignInForm = () => {
         <p className="text-sm text-muted-foreground">Enter your credentials to access your account</p>
       </div>
       <div className="space-y-4">
-        <AuthInput label="Email Address" type="email" placeholder="name@example.com" value={email} onChange={setEmail} />
-        <AuthInput label="Password" type="password" placeholder="••••••••" value={password} onChange={setPassword} />
+        <AuthInput label="Email Address" type="email" placeholder="name@example.com" value={email} onChange={(v) => { setEmail(v); setErrors(prev => ({ ...prev, email: undefined })); }} error={errors.email} />
+        <AuthInput label="Password" type="password" placeholder="••••••••" value={password} onChange={(v) => { setPassword(v); setErrors(prev => ({ ...prev, password: undefined })); }} error={errors.password} />
         <div className="flex justify-end">
           <button className="text-sm font-medium text-primary hover:underline">Forgot password?</button>
         </div>
@@ -97,10 +122,23 @@ const SignInForm = () => {
 
 const SignUpForm = () => {
   const [form, setForm] = useState({ full_name: "", email: "", password: "", confirmPassword: "" });
+  const [errors, setErrors] = useState<{ full_name?: string; email?: string; password?: string; confirmPassword?: string }>({});
   const [loading, setLoading] = useState(false);
 
+  const validate = () => {
+    const e: { full_name?: string; email?: string; password?: string; confirmPassword?: string } = {};
+    if (!form.full_name) e.full_name = "Full name is required";
+    if (!form.email) e.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email format";
+    if (!form.password) e.password = "Password is required";
+    else if (form.password.length < 8) e.password = "Password must be at least 8 characters";
+    if (form.password !== form.confirmPassword) e.confirmPassword = "Passwords do not match";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const handleSubmit = async () => {
-    if (form.password !== form.confirmPassword) { toast({ title: "Passwords don't match", variant: "destructive" }); return; }
+    if (!validate()) return;
     setLoading(true);
     try {
       await authApi.register({ user_in: { email: form.email, password: form.password, full_name: form.full_name } });
@@ -116,10 +154,10 @@ const SignUpForm = () => {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Create an account</h1>
         <p className="text-sm text-muted-foreground">Enter your details to get started</p>
       </div>
-      <AuthInput label="Full Name" placeholder="John Doe" value={form.full_name} onChange={(v) => setForm((p) => ({ ...p, full_name: v }))} />
-      <AuthInput label="Email Address" type="email" placeholder="name@example.com" value={form.email} onChange={(v) => setForm((p) => ({ ...p, email: v }))} />
-      <AuthInput label="Password" type="password" placeholder="••••••••" value={form.password} onChange={(v) => setForm((p) => ({ ...p, password: v }))} />
-      <AuthInput label="Confirm Password" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={(v) => setForm((p) => ({ ...p, confirmPassword: v }))} />
+      <AuthInput label="Full Name" placeholder="John Doe" value={form.full_name} onChange={(v) => { setForm((p) => ({ ...p, full_name: v })); setErrors(prev => ({ ...prev, full_name: undefined })); }} error={errors.full_name} />
+      <AuthInput label="Email Address" type="email" placeholder="name@example.com" value={form.email} onChange={(v) => { setForm((p) => ({ ...p, email: v })); setErrors(prev => ({ ...prev, email: undefined })); }} error={errors.email} />
+      <AuthInput label="Password" type="password" placeholder="••••••••" value={form.password} onChange={(v) => { setForm((p) => ({ ...p, password: v })); setErrors(prev => ({ ...prev, password: undefined })); }} error={errors.password} />
+      <AuthInput label="Confirm Password" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={(v) => { setForm((p) => ({ ...p, confirmPassword: v })); setErrors(prev => ({ ...prev, confirmPassword: undefined })); }} error={errors.confirmPassword} />
       <button onClick={handleSubmit} disabled={loading} className="w-full py-2 rounded-md font-semibold text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">
         {loading ? "Creating..." : "Create Account"}
       </button>
@@ -154,7 +192,9 @@ const HospitalRegisterForm = () => {
     if (!form.location.trim()) e.location = "Required";
     if (!form.description.trim()) e.description = "Required";
     if (!form.email.trim()) e.email = "Required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email format";
     if (!form.password) e.password = "Required";
+    else if (form.password.length < 8) e.password = "Min 8 chars";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -216,7 +256,7 @@ const HospitalRegisterForm = () => {
       </div>
 
       <AuthInput label="Address" placeholder="Full Address" value={form.location} onChange={updateField("location")} error={errors.location} />
-      <AuthInput label="Description" placeholder="Brief description" value={form.description} onChange={updateField("description")} error={errors.description} />
+      <AuthTextArea label="Description" placeholder="Brief description of the hospital..." value={form.description} onChange={updateField("description")} error={errors.description} />
       <AuthInput label="Admin Email" type="email" placeholder="admin@hospital.org" value={form.email} onChange={updateField("email")} error={errors.email} />
       <AuthInput label="Password" type="password" placeholder="••••••••" value={form.password} onChange={updateField("password")} error={errors.password} />
 
@@ -270,7 +310,7 @@ const Index = () => {
 
       {/* Auth Section */}
       <div className="flex flex-col items-center justify-center p-6 lg:p-12 bg-background">
-        <div className="w-full max-w-sm space-y-8">
+        <div className="w-full max-w-lg space-y-8">
           <div className="flex justify-center border-b border-border w-full mb-8">
             {(["signin", "signup", "hospital"] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1",
 });
 
 api.interceptors.request.use((config) => {
@@ -52,11 +52,16 @@ export const adminApi = {
   createLabTest: (data: any) => api.post("/admin/lab-tests/create", data),
   createFloor: (data: any) => api.post("/admin/floors/create", data),
   createAvailability: (data: any) => api.post("/admin/availability/create", data),
+  createHospital: (data: any) => api.post("/admin/hospitals/create", data),
+  registerDoctor: (data: any) => api.post("/admin/doctors/register", data),
+  registerNurse: (data: any) => api.post("/admin/nurses/register", data),
 };
 
 // Doctors
 export const doctorsApi = {
   list: (skip = 0, limit = 100) => api.get(`/doctors/?skip=${skip}&limit=${limit}`),
+  search: (q: string) => api.get(`/doctors/search?q=${q}`),
+  searchPotential: (q: string) => api.get(`/doctors/search-potential?q=${q}`),
   update: (id: string, data: any) => api.put(`/doctors/${id}`, data),
   delete: (id: string) => api.delete(`/doctors/${id}`),
 };
@@ -64,6 +69,8 @@ export const doctorsApi = {
 // Nurses
 export const nursesApi = {
   list: (skip = 0, limit = 100) => api.get(`/nurses/?skip=${skip}&limit=${limit}`),
+  search: (q: string) => api.get(`/nurses/search?q=${q}`),
+  searchPotential: (q: string) => api.get(`/nurses/search-potential?q=${q}`),
   update: (id: string, data: any) => api.put(`/nurses/${id}`, data),
   delete: (id: string) => api.delete(`/nurses/${id}`),
 };
@@ -71,11 +78,17 @@ export const nursesApi = {
 // Patients
 export const patientsApi = {
   list: (skip = 0, limit = 100) => api.get(`/patients/?skip=${skip}&limit=${limit}`),
+  create: (data: any) => api.post("/patients/", data),
+  get: (id: string) => api.get(`/patients/${id}`),
+  update: (id: string, data: any) => api.put(`/patients/${id}`, data),
+  delete: (id: string) => api.delete(`/patients/${id}`),
 };
 
-// Inventory
+// Inventory (Medicines)
 export const inventoryApi = {
   list: (skip = 0, limit = 100) => api.get(`/inventory/?skip=${skip}&limit=${limit}`),
+  create: (data: any) => api.post("/inventory/", data),
+  get: (id: string) => api.get(`/inventory/${id}`),
   update: (id: string, data: any) => api.put(`/inventory/${id}`, data),
   delete: (id: string) => api.delete(`/inventory/${id}`),
   addStock: (id: string, quantity: number) =>
@@ -99,6 +112,8 @@ export const floorsApi = {
 // Availability
 export const availabilityApi = {
   list: (skip = 0, limit = 100) => api.get(`/availability/?skip=${skip}&limit=${limit}`),
+  update: (id: string, data: any) => api.put(`/availability/${id}`, data),
+  delete: (id: string) => api.delete(`/availability/${id}`),
 };
 
 // Hospitals
@@ -107,10 +122,22 @@ export const hospitalsApi = {
   get: (id: string) => api.get(`/hospitals/${id}`),
 };
 
+// Search
+export const searchApi = {
+  resources: (q: string) => api.get(`/search/resources?q=${q}`),
+  staffSearch: (q: string, roleFilter?: 'doctor' | 'nurse') => {
+    const params = new URLSearchParams({ q });
+    if (roleFilter) params.append('role_filter', roleFilter);
+    return api.get(`/admin/staff/search?${params.toString()}`);
+  },
+  usersForStaff: (q: string) => api.get(`/search/users-for-staff?q=${q}`),
+};
+
 // Users
 export const usersApi = {
   me: () => api.get("/users/me"),
   list: (skip = 0, limit = 100) => api.get(`/users/?skip=${skip}&limit=${limit}`),
+  searchUsersForStaff: (q: string) => api.get(`/search/users-for-staff?q=${q}`),
   uploadImage: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

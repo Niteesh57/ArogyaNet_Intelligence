@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { UserSearch } from "@/components/UserSearch";
 import { doctorsApi, adminApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
@@ -98,7 +99,12 @@ const Doctors = () => {
 
       <GlassModal open={modal !== null} onClose={() => setModal(null)} title={modal === "create" ? "Add Doctor" : "Edit Doctor"}>
         <div className="space-y-4 pt-2">
-          {modal === "create" && <GlassInput label="User ID" value={form.user_id} onChange={(v) => setForm((p) => ({ ...p, user_id: v }))} placeholder="User UUID" />}
+          {modal === "create" && (
+            <div className="mb-4">
+              <UserSearch onSelect={(u) => setForm((p) => ({ ...p, user_id: u.id }))} label="Search User" placeholder="Search by name or email" searchAction={doctorsApi.searchPotential} />
+              {form.user_id && <p className="text-xs text-green-600 mt-1">User selected</p>}
+            </div>
+          )}
           <GlassInput label="Specialization" value={form.specialization} onChange={(v) => setForm((p) => ({ ...p, specialization: v }))} />
           <GlassInput label="License Number" value={form.license_number} onChange={(v) => setForm((p) => ({ ...p, license_number: v }))} />
           <GlassInput label="Experience (years)" value={form.experience_years} onChange={(v) => setForm((p) => ({ ...p, experience_years: v }))} type="number" />

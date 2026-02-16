@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { UserSearch } from "@/components/UserSearch";
 import { nursesApi, adminApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
@@ -19,7 +20,7 @@ const Nurses = () => {
   const [selected, setSelected] = useState<Nurse | null>(null);
   const [form, setForm] = useState({ user_id: "", hospital_id: "", shift_type: "day" });
 
-  const fetch = () => { setLoading(true); nursesApi.list().then((r) => setNurses(r.data)).catch(() => {}).finally(() => setLoading(false)); };
+  const fetch = () => { setLoading(true); nursesApi.list().then((r) => setNurses(r.data)).catch(() => { }).finally(() => setLoading(false)); };
   useEffect(() => { fetch(); }, []);
 
   const filtered = nurses.filter((n) => ((n.user?.full_name || "") + (n.user?.email || "")).toLowerCase().includes(search.toLowerCase()));
@@ -41,7 +42,7 @@ const Nurses = () => {
   };
 
   const toggleAvail = async (n: Nurse) => {
-    try { await nursesApi.update(n.id, { is_available: !n.is_available }); fetch(); } catch {}
+    try { await nursesApi.update(n.id, { is_available: !n.is_available }); fetch(); } catch { }
   };
 
   return (
@@ -72,7 +73,12 @@ const Nurses = () => {
       )}
       <GlassModal open={modal !== null} onClose={() => setModal(null)} title={modal === "create" ? "Add Nurse" : "Edit Nurse"}>
         <div className="space-y-4 pt-2">
-          {modal === "create" && <GlassInput label="User ID" value={form.user_id} onChange={(v) => setForm((p) => ({ ...p, user_id: v }))} />}
+          {modal === "create" && (
+            <div className="mb-4">
+              <UserSearch onSelect={(u) => setForm((p) => ({ ...p, user_id: u.id }))} label="Search User" placeholder="Search by name or email" searchAction={nursesApi.searchPotential} />
+              {form.user_id && <p className="text-xs text-green-600 mt-1">User selected</p>}
+            </div>
+          )}
           <GlassSelect label="Shift Type" value={form.shift_type} onChange={(v) => setForm((p) => ({ ...p, shift_type: v }))} options={[{ value: "day", label: "Day" }, { value: "night", label: "Night" }]} />
           <GlassButton onClick={modal === "create" ? handleCreate : handleUpdate} className="w-full">{modal === "create" ? "Create Nurse" : "Save"}</GlassButton>
         </div>
