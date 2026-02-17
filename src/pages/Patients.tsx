@@ -57,7 +57,15 @@ const Patients = () => {
 
   const fetch = () => {
     setLoading(true);
-    patientsApi.list().then((r) => setPatients(r.data)).catch(() => { }).finally(() => setLoading(false));
+    if (isAdmin) {
+      patientsApi.list().then((r) => setPatients(r.data)).catch(() => { }).finally(() => setLoading(false));
+    } else {
+      // Doctor role: fetch patients assigned to this doctor
+      doctorsApi.getMyPatients().then((r) => setPatients(r.data)).catch(() => {
+        // Fallback to all patients list
+        patientsApi.list().then((r) => setPatients(r.data)).catch(() => { });
+      }).finally(() => setLoading(false));
+    }
   };
 
   useEffect(() => { fetch(); }, []);

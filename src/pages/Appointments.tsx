@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { appointmentsApi, searchApi, agentApi, namesApi, doctorsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Sparkles, X, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, X, Clock, Stethoscope } from "lucide-react";
 import { GeminiLoadingModal } from "@/components/GeminiAnimation";
 
 interface Appointment {
@@ -14,6 +15,7 @@ interface Appointment {
     date: string;
     slot: string;
     severity: "low" | "medium" | "high" | "critical";
+    status?: "started" | "in_progress" | "finished" | "admitted";
     remarks?: { text?: string; lab?: string[]; medicine?: string[] };
     next_followup?: string;
     lab_report_id?: string;
@@ -28,12 +30,17 @@ interface Slot {
 
 const Appointments = () => {
     const { isAdmin } = useAuth();
+    const navigate = useNavigate();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [modal, setModal] = useState<"create" | "edit" | null>(null);
     const [selected, setSelected] = useState<Appointment | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
+
+    // Status Workflow State
+    const [activeTab, setActiveTab] = useState<"started" | "in_progress" | "finished" | "admitted">("started");
+    const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Search states
     const [patientQuery, setPatientQuery] = useState("");
@@ -58,6 +65,7 @@ const Appointments = () => {
         date: "",
         slot: "",
         severity: "low" as "low" | "medium" | "high" | "critical",
+        status: "started" as "started" | "in_progress" | "finished" | "admitted",
         remarks_text: "",
         next_followup: "",
     });
@@ -89,9 +97,32 @@ const Appointments = () => {
         }
     }, [form.doctor_id, form.date]);
 
-    const filtered = appointments.filter((a) =>
-        (a.description + a.slot).toLowerCase().includes(search.toLowerCase())
-    );
+    // Status update handler
+    const updateStatus = async (id: string, newStatus: string) => {
+        try {
+            // Optimistic update
+            setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as any } : a));
+            await appointmentsApi.update(id, { status: newStatus });
+            toast({ title: "Status updated" });
+        } catch {
+            toast({ title: "Update failed", variant: "destructive" });
+            fetch(); // Revert
+        }
+    };
+
+    const filtered = appointments.filter((a) => {
+        const matchesSearch = (a.description + a.slot).toLowerCase().includes(search.toLowerCase());
+        const matchesStatus = (a.status || "started") === activeTab;
+        const matchesDate = !filterDate || a.date === filterDate;
+        return matchesSearch && matchesStatus && matchesDate;
+    }).sort((a, b) => a.slot.localeCompare(b.slot));
+
+    const groupedAppointments = filtered.reduce((acc, appt) => {
+        const date = appt.date;
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(appt);
+        return acc;
+    }, {} as Record<string, Appointment[]>);
 
     // Fetch and cache names
     const fetchName = async (type: 'patient' | 'doctor', id: string) => {
@@ -106,7 +137,7 @@ const Appointments = () => {
         } catch { }
     };
 
-    // Search patients
+    // ... search functions ...
     const searchPatients = async () => {
         if (!patientQuery || patientQuery.length < 2) return;
         try {
@@ -114,8 +145,6 @@ const Appointments = () => {
             setPatientResults(res.data);
         } catch { }
     };
-
-    // Search doctors
     const searchDoctors = async () => {
         if (!doctorQuery || doctorQuery.length < 2) return;
         try {
@@ -218,6 +247,7 @@ const Appointments = () => {
                 date: form.date,
                 slot: form.slot,
                 severity: form.severity,
+                status: form.status,
                 remarks: form.remarks_text ? { text: form.remarks_text } : undefined,
                 next_followup: form.next_followup || undefined,
             });
@@ -249,6 +279,7 @@ const Appointments = () => {
             date: "",
             slot: "",
             severity: "low",
+            status: "started",
             remarks_text: "",
             next_followup: "",
         });
@@ -268,6 +299,16 @@ const Appointments = () => {
             case "high": return "text-orange-500";
             case "critical": return "text-red-500";
             default: return "text-muted-foreground";
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "started": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+            case "in_progress": return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+            case "finished": return "bg-green-500/10 text-green-500 border-green-500/20";
+            case "admitted": return "bg-red-500/10 text-red-500 border-red-500/20";
+            default: return "bg-muted text-muted-foreground";
         }
     };
 
@@ -292,63 +333,147 @@ const Appointments = () => {
                     </div>
                 }
             />
+
+
+            {/* Status Tabs */}
+            <div className="flex flex-col gap-4 mb-6">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                    {/* Tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                        {(["started", "in_progress", "finished", "admitted"] as const).map(status => (
+                            <button
+                                key={status}
+                                onClick={() => setActiveTab(status)}
+                                className={`
+                                    px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
+                                    ${activeTab === status
+                                        ? getStatusColor(status) + " border shadow-sm ring-1 ring-offset-1 ring-offset-background " + (status === 'started' ? 'ring-blue-500/30' : status === 'in_progress' ? 'ring-amber-500/30' : status === 'finished' ? 'ring-green-500/30' : 'ring-red-500/30')
+                                        : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-transparent"}
+                                `}
+                            >
+                                {status === 'in_progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+                                <span className="ml-2 text-xs opacity-60 bg-black/10 px-1.5 py-0.5 rounded-full">
+                                    {appointments.filter(a => (a.status || 'started') === status).length}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Date Filter */}
+                    <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Filter Date:</span>
+                        <input
+                            type="date"
+                            value={filterDate}
+                            onChange={(e) => setFilterDate(e.target.value)}
+                            className="bg-background border border-input rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        {filterDate && (
+                            <button onClick={() => setFilterDate("")} className="text-xs text-muted-foreground hover:text-foreground">
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {loading ? (
                 <Shimmer />
             ) : (
-                <GlassTable headers={["Date", "Slot", "Patient", "Doctor", "Description", "Severity", "Actions"]}>
-                    {filtered.map((a) => (
-                        <tr key={a.id} className="hover:bg-background/20 transition-colors">
-                            <td className="px-4 py-3 text-sm text-foreground">
-                                {new Date(a.date).toLocaleDateString()}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground">{a.slot}</td>
-                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`patient_${a.patient_id}`] || 'Loading...'}</td>
-                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`doctor_${a.doctor_id}`] || 'Loading...'}</td>
-                            <td className="px-4 py-3 text-sm text-foreground">{a.description}</td>
-                            <td className={`px-4 py-3 text-sm font-medium capitalize ${getSeverityColor(a.severity)}`}>
-                                {a.severity}
-                            </td>
-                            <td className="px-4 py-3 flex gap-2">
-                                {isAdmin && (
-                                    <>
-                                        <button
-                                            onClick={() => {
-                                                setSelected(a);
-                                                setForm({
-                                                    patient_id: a.patient_id,
-                                                    doctor_id: a.doctor_id,
-                                                    description: a.description,
-                                                    date: a.date,
-                                                    slot: a.slot,
-                                                    severity: a.severity,
-                                                    remarks_text: a.remarks?.text || "",
-                                                    next_followup: a.next_followup || "",
-                                                });
-                                                // Also set selected doctor/patient for display
-                                                if (a.patient_id) fetchName('patient', a.patient_id).then(() => {
-                                                    setSelectedPatient({ id: a.patient_id, name: nameCache[`patient_${a.patient_id}`] || 'Unknown' });
-                                                });
-                                                if (a.doctor_id) fetchName('doctor', a.doctor_id).then(() => {
-                                                    setSelectedDoctor({ id: a.doctor_id, name: nameCache[`doctor_${a.doctor_id}`] || 'Unknown' });
-                                                });
-                                                setModal("edit");
-                                            }}
-                                            className="text-muted-foreground hover:text-primary transition-colors"
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(a.id)}
-                                            className="text-muted-foreground hover:text-destructive transition-colors"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </GlassTable>
+                <div className="space-y-8">
+                    {Object.keys(groupedAppointments).length === 0 ? (
+                        <div className="text-center py-10 bg-muted/10 rounded-xl border border-dashed border-muted">
+                            <p className="text-muted-foreground">No appointments found for this selection.</p>
+                            {filterDate && <button onClick={() => setFilterDate("")} className="text-primary hover:underline text-sm mt-2">See all dates</button>}
+                        </div>
+                    ) : (
+                        Object.entries(groupedAppointments).sort((a, b) => a[0].localeCompare(b[0])).map(([date, appts]) => (
+                            <div key={date} className="space-y-3">
+                                <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground/80">
+                                    <Clock className="w-4 h-4" />
+                                    {new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                        {appts.length}
+                                    </span>
+                                </h3>
+                                <GlassTable headers={["Slot", "Patient", "Doctor", "Description", "Status", "Severity", "Actions"]}>
+                                    {appts.map((a) => (
+                                        <tr key={a.id} className="hover:bg-background/20 transition-colors">
+                                            {/* Removed Date Column as it is grouped */}
+                                            <td className="px-4 py-3 text-sm text-foreground font-medium">{a.slot}</td>
+                                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`patient_${a.patient_id}`] || 'Loading...'}</td>
+                                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`doctor_${a.doctor_id}`] || 'Loading...'}</td>
+                                            <td className="px-4 py-3 text-sm text-foreground max-w-[250px] truncate" title={a.description}>{a.description}</td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <select
+                                                    value={a.status || "started"}
+                                                    onChange={(e) => updateStatus(a.id, e.target.value)}
+                                                    className={`text-xs font-medium rounded-md border-0 bg-transparent py-1 pl-0 pr-6 focus:ring-0 ${getStatusColor(a.status || 'started').replace('bg-', 'text-')}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <option value="started">Started</option>
+                                                    <option value="in_progress">In Progress</option>
+                                                    <option value="finished">Finished</option>
+                                                    <option value="admitted">Admitted</option>
+                                                </select>
+                                            </td>
+                                            <td className={`px-4 py-3 text-sm font-medium capitalize ${getSeverityColor(a.severity)}`}>
+                                                {a.severity}
+                                            </td>
+                                            <td className="px-4 py-3 flex gap-2">
+                                                <button
+                                                    onClick={() => navigate(`/consultation/${a.id}`)}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                                                    title={a.remarks ? "Update Consultation" : "Record Consultation"}
+                                                >
+                                                    <Stethoscope className="w-3.5 h-3.5" />
+                                                    {a.remarks ? "Update" : "Record"}
+                                                </button>
+                                                {isAdmin && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelected(a);
+                                                                setForm({
+                                                                    patient_id: a.patient_id,
+                                                                    doctor_id: a.doctor_id,
+                                                                    description: a.description,
+                                                                    date: a.date,
+                                                                    slot: a.slot,
+                                                                    severity: a.severity,
+                                                                    status: a.status || "started",
+                                                                    remarks_text: a.remarks?.text || "",
+                                                                    next_followup: a.next_followup || "",
+                                                                });
+                                                                if (a.patient_id) fetchName('patient', a.patient_id).then(() => {
+                                                                    setSelectedPatient({ id: a.patient_id, name: nameCache[`patient_${a.patient_id}`] || 'Unknown' });
+                                                                });
+                                                                if (a.doctor_id) fetchName('doctor', a.doctor_id).then(() => {
+                                                                    setSelectedDoctor({ id: a.doctor_id, name: nameCache[`doctor_${a.doctor_id}`] || 'Unknown' });
+                                                                });
+                                                                setModal("edit");
+                                                            }}
+                                                            className="text-muted-foreground hover:text-primary transition-colors"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(a.id)}
+                                                            className="text-muted-foreground hover:text-destructive transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </GlassTable>
+                            </div>
+                        ))
+                    )}
+                </div>
             )}
 
             {/* Create/Edit Modal */}

@@ -120,7 +120,7 @@ const SignInForm = () => {
   );
 };
 
-const SignUpForm = () => {
+const SignUpForm = ({ onSuccess }: { onSuccess: () => void }) => {
   const [form, setForm] = useState({ full_name: "", email: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState<{ full_name?: string; email?: string; password?: string; confirmPassword?: string }>({});
   const [loading, setLoading] = useState(false);
@@ -143,6 +143,7 @@ const SignUpForm = () => {
     try {
       await authApi.register({ user_in: { email: form.email, password: form.password, full_name: form.full_name } });
       toast({ title: "Account created! Please sign in." });
+      onSuccess();
     } catch (err: any) {
       toast({ title: "Registration failed", description: err?.response?.data?.detail || "Try again", variant: "destructive" });
     } finally { setLoading(false); }
@@ -321,7 +322,7 @@ const Index = () => {
           </div>
 
           <div className="animate-fade-up">
-            {activeTab === "signin" ? <SignInForm /> : activeTab === "signup" ? <SignUpForm /> : <HospitalRegisterForm />}
+            {activeTab === "signin" ? <SignInForm /> : activeTab === "signup" ? <SignUpForm onSuccess={() => setActiveTab("signin")} /> : <HospitalRegisterForm />}
           </div>
         </div>
       </div>

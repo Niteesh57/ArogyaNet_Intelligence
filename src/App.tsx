@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import Onboarding from "./pages/Onboarding";
 import Doctors from "./pages/Doctors";
 import Nurses from "./pages/Nurses";
 import Patients from "./pages/Patients";
@@ -17,6 +18,7 @@ import Floors from "./pages/Floors";
 import Availability from "./pages/Availability";
 import Appointments from "./pages/Appointments";
 import LabReports from "./pages/LabReports";
+import Consultation from "./pages/Consultation";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import NotFound from "./pages/NotFound";
 
@@ -46,7 +48,9 @@ const App = () => (
             <Route path="/floors" element={<ProtectedPage><Floors /></ProtectedPage>} />
             <Route path="/availability" element={<ProtectedPage><Availability /></ProtectedPage>} />
             <Route path="/appointments" element={<ProtectedPage><Appointments /></ProtectedPage>} />
+            <Route path="/consultation/:id" element={<ProtectedPage><Consultation /></ProtectedPage>} />
             <Route path="/lab-reports" element={<ProtectedPage><LabReports /></ProtectedPage>} />
+            <Route path="/onboarding" element={<ProtectedPage><Onboarding /></ProtectedPage>} />
             <Route path="/oauth-success" element={<OAuthSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -37,8 +37,12 @@ export const authApi = {
   },
   register: (data: { user_in: any; hospital_in?: any }) =>
     api.post("/auth/register", data),
-  googleLogin: (token: string) =>
-    api.post("/auth/google", { token }),
+  // Google OAuth is redirect-based (GET /auth/login/google → callback)
+  // No POST endpoint exists. Use window.location for OAuth redirect:
+  googleLoginRedirect: () => {
+    const baseURL = api.defaults.baseURL || "http://localhost:8000/api/v1";
+    window.location.href = `${baseURL}/auth/login/google`;
+  },
   me: () => api.get("/auth/me"),
 };
 
@@ -46,6 +50,8 @@ export const authApi = {
 export const adminApi = {
   dashboardStats: () => api.get("/admin/dashboard/stats"),
   createDoctor: (data: any) => api.post("/admin/doctors/create", data),
+  // Note: backend has no /admin/nurses/create — use registerNurse instead
+  // createNurse kept for backward compat but needs backend route to be added
   createNurse: (data: any) => api.post("/admin/nurses/create", data),
   createPatient: (data: any) => api.post("/admin/patients/create", data),
   createMedicine: (data: any) => api.post("/admin/medicines/create", data),
@@ -65,6 +71,8 @@ export const doctorsApi = {
   update: (id: string, data: any) => api.put(`/doctors/${id}`, data),
   delete: (id: string) => api.delete(`/doctors/${id}`),
   getSlots: (id: string, date: string) => api.get(`/doctors/${id}/slots?date=${date}`),
+  getMyPatients: (skip = 0, limit = 100) => api.get(`/doctors/me/patients?skip=${skip}&limit=${limit}`),
+  searchInHospital: (hospitalId: string, q: string) => api.get(`/doctors/hospital/${hospitalId}/search?q=${q}`),
 };
 
 // Nurses
@@ -80,23 +88,25 @@ export const nursesApi = {
 export const patientsApi = {
   list: (skip = 0, limit = 100) => api.get(`/patients/?skip=${skip}&limit=${limit}`),
   create: (data: any) => api.post("/patients/", data),
-  get: (id: string) => api.get(`/patients/${id}`),
+  // Note: No GET /patients/{id} in backend — use list + filter or search instead
   update: (id: string, data: any) => api.put(`/patients/${id}`, data),
   delete: (id: string) => api.delete(`/patients/${id}`),
   createWithAppointment: (data: any) => api.post("/patients/with-appointment", data),
+  search: (q: string) => api.get(`/patients/search?q=${q}`),
 };
 
 // Inventory (Medicines)
 export const inventoryApi = {
   list: (skip = 0, limit = 100) => api.get(`/inventory/?skip=${skip}&limit=${limit}`),
   create: (data: any) => api.post("/inventory/", data),
-  get: (id: string) => api.get(`/inventory/${id}`),
+  // Note: No GET /inventory/{id} in backend — use list + filter or search instead
   update: (id: string, data: any) => api.put(`/inventory/${id}`, data),
   delete: (id: string) => api.delete(`/inventory/${id}`),
   addStock: (id: string, quantity: number) =>
     api.patch(`/inventory/${id}/add-stock?quantity=${quantity}`),
   removeStock: (id: string, quantity: number) =>
     api.patch(`/inventory/${id}/remove-stock?quantity=${quantity}`),
+  search: (q: string) => api.get(`/inventory/search?q=${q}`),
 };
 
 // Lab Tests
@@ -104,6 +114,7 @@ export const labTestsApi = {
   list: (skip = 0, limit = 100) => api.get(`/lab-tests/?skip=${skip}&limit=${limit}`),
   update: (id: string, data: any) => api.put(`/lab-tests/${id}`, data),
   delete: (id: string) => api.delete(`/lab-tests/${id}`),
+  search: (q: string) => api.get(`/lab-tests/search?q=${q}`),
 };
 
 // Floors
@@ -120,8 +131,13 @@ export const availabilityApi = {
 
 // Hospitals
 export const hospitalsApi = {
+  // Note: No GET /hospitals/ list in backend — use search with broad query as fallback
+  list: () => api.get(`/hospitals/search?q=a`),
   register: (data: any) => api.post("/hospitals/register", data),
   get: (id: string) => api.get(`/hospitals/${id}`),
+  search: (name: string) => api.get(`/hospitals/search?q=${name}`),
+  searchDoctors: (hospitalId: string, query: string) => api.get(`/hospital/${hospitalId}/search?q=${query}`),
+  searchDoctorsInHospital: (hospitalId: string, query: string) => api.get(`/hospitals/${hospitalId}/doctors/search?q=${query}`),
 };
 
 // Search
@@ -133,7 +149,9 @@ export const searchApi = {
     return api.get(`/admin/staff/search?${params.toString()}`);
   },
   usersForStaff: (q: string) => api.get(`/search/users-for-staff?q=${q}`),
+  searchPatients: (q: string) => api.get(`/search/patients?q=${q}`),
   patientSearch: (q: string) => api.get(`/patients/search?q=${q}`),
+  // Alias — same as doctorsApi.search, kept for backward compat in call sites
   doctorSearch: (q: string) => api.get(`/doctors/search?q=${q}`),
 };
 
@@ -145,7 +163,7 @@ export const namesApi = {
 
 // AI Agent
 export const agentApi = {
-  suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string }) =>
+  suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string; hospital_id?: string }) =>
     api.post("/agent/suggest-appointment", data),
 };
 
@@ -156,8 +174,18 @@ export const appointmentsApi = {
   create: (data: any) => api.post("/appointments/", data),
   list: (skip = 0, limit = 100) => api.get(`/appointments/?skip=${skip}&limit=${limit}`),
   get: (id: string) => api.get(`/appointments/${id}`),
+  getForPatient: (patientId: string) => api.get(`/appointments/patient/${patientId}`),
+  getMyAppointments: () => api.get("/appointments/my-appointments"),
   update: (id: string, data: any) => api.put(`/appointments/${id}`, data),
   delete: (id: string) => api.delete(`/appointments/${id}`),
+  consultation: (id: string, remarks: any, severity?: string, nextFollowup?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (severity) params.append('severity', severity);
+    if (status) params.append('status', status);
+    if (nextFollowup) params.append('next_followup', nextFollowup);
+    const qs = params.toString();
+    return api.post(`/appointments/${id}/consultation${qs ? '?' + qs : ''}`, remarks);
+  },
 };
 
 // Lab Reports
@@ -165,6 +193,8 @@ export const labReportsApi = {
   create: (data: any) => api.post("/lab-reports/", data),
   list: (skip = 0, limit = 100) => api.get(`/lab-reports/?skip=${skip}&limit=${limit}`),
   get: (id: string) => api.get(`/lab-reports/${id}`),
+  getForPatient: (patientId: string) => api.get(`/lab-reports/patient/${patientId}`),
+  getMyReports: (skip = 0, limit = 100) => api.get(`/lab-reports/my-reports?skip=${skip}&limit=${limit}`),
   update: (id: string, data: any) => api.put(`/lab-reports/${id}`, data),
   delete: (id: string) => api.delete(`/lab-reports/${id}`),
 };
@@ -178,6 +208,17 @@ export const usersApi = {
     const formData = new FormData();
     formData.append("file", file);
     return api.post("/users/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+};
+
+// Voice
+export const voiceApi = {
+  transcribe: (blob: Blob) => {
+    const formData = new FormData();
+    formData.append("file", blob, "recording.webm");
+    return api.post("/voice/transcribe", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },

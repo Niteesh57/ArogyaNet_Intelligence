@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { authApi } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
-export type UserRole = "super_admin" | "hospital_admin" | "doctor" | "nurse" | "patient";
+export type UserRole = "super_admin" | "hospital_admin" | "doctor" | "nurse" | "patient" | "user";
 
 export interface User {
   id: string;
@@ -12,6 +12,7 @@ export interface User {
   is_active?: boolean;
   is_verified?: boolean;
   image?: string;
+  phone_number?: string;
   hospital_id?: string;
 }
 
@@ -21,6 +22,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  fetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -68,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );
