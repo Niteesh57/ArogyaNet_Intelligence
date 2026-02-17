@@ -6,11 +6,12 @@ interface GlassModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  className?: string;
 }
 
-export const GlassModal = ({ open, onClose, title, children }: GlassModalProps) => (
+export const GlassModal = ({ open, onClose, title, children, className }: GlassModalProps) => (
   <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-    <DialogContent className="bg-background border-border sm:max-w-lg shadow-lg">
+    <DialogContent className={`bg-background border-border shadow-lg ${className || 'sm:max-w-lg'}`}>
       <DialogHeader>
         <DialogTitle className="text-xl font-semibold text-foreground">{title}</DialogTitle>
       </DialogHeader>
@@ -25,10 +26,11 @@ interface GlassInputProps {
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  className?: string;
 }
 
-export const GlassInput = ({ label, value, onChange, type = "text", placeholder }: GlassInputProps) => (
-  <div className="space-y-2">
+export const GlassInput = ({ label, value, onChange, type = "text", placeholder, className }: GlassInputProps) => (
+  <div className={`space-y-2 ${className}`}>
     <label className="block text-sm font-medium text-foreground">{label}</label>
     <input
       type={type}

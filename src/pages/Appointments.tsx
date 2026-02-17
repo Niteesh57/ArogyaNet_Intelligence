@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { appointmentsApi, agentApi, patientsApi, doctorsApi } from "@/lib/api";
+import { appointmentsApi, searchApi, agentApi, namesApi, doctorsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Calendar, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, X, Clock } from "lucide-react";
 import { GeminiLoadingModal } from "@/components/GeminiAnimation";
 
 interface Appointment {
@@ -21,6 +21,11 @@ interface Appointment {
     updated_at: string;
 }
 
+interface Slot {
+    time: string;
+    status: "available" | "booked";
+}
+
 const Appointments = () => {
     const { isAdmin } = useAuth();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -29,6 +34,23 @@ const Appointments = () => {
     const [modal, setModal] = useState<"create" | "edit" | null>(null);
     const [selected, setSelected] = useState<Appointment | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
+
+    // Search states
+    const [patientQuery, setPatientQuery] = useState("");
+    const [patientResults, setPatientResults] = useState<any[]>([]);
+    const [selectedPatient, setSelectedPatient] = useState<{ id: string, name: string } | null>(null);
+
+    const [doctorQuery, setDoctorQuery] = useState("");
+    const [doctorResults, setDoctorResults] = useState<any[]>([]);
+    const [selectedDoctor, setSelectedDoctor] = useState<{ id: string, name: string } | null>(null);
+
+    // Slot states
+    const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
+    const [slotLoading, setSlotLoading] = useState(false);
+
+    // Name cache for display
+    const [nameCache, setNameCache] = useState<{ [key: string]: string }>({});
+
     const [form, setForm] = useState({
         patient_id: "",
         doctor_id: "",
@@ -42,15 +64,95 @@ const Appointments = () => {
 
     const fetch = () => {
         setLoading(true);
-        appointmentsApi.list().then((r) => setAppointments(r.data)).catch(() => { }).finally(() => setLoading(false));
+        appointmentsApi.list().then((r) => {
+            setAppointments(r.data);
+            // Fetch names for all appointments
+            r.data.forEach((a: Appointment) => {
+                fetchName('patient', a.patient_id);
+                fetchName('doctor', a.doctor_id);
+            });
+        }).catch(() => { }).finally(() => setLoading(false));
     };
+
     useEffect(() => { fetch(); }, []);
+
+    // Fetch slots when doctor and date change
+    useEffect(() => {
+        if (form.doctor_id && form.date) {
+            setSlotLoading(true);
+            doctorsApi.getSlots(form.doctor_id, form.date)
+                .then(res => setAvailableSlots(res.data))
+                .catch(() => setAvailableSlots([]))
+                .finally(() => setSlotLoading(false));
+        } else {
+            setAvailableSlots([]);
+        }
+    }, [form.doctor_id, form.date]);
 
     const filtered = appointments.filter((a) =>
         (a.description + a.slot).toLowerCase().includes(search.toLowerCase())
     );
 
+    // Fetch and cache names
+    const fetchName = async (type: 'patient' | 'doctor', id: string) => {
+        const key = `${type}_${id}`;
+        if (nameCache[key]) return;
+
+        try {
+            const res = type === 'patient'
+                ? await namesApi.getPatientName(id)
+                : await namesApi.getDoctorName(id);
+            setNameCache(prev => ({ ...prev, [key]: res.data.full_name }));
+        } catch { }
+    };
+
+    // Search patients
+    const searchPatients = async () => {
+        if (!patientQuery || patientQuery.length < 2) return;
+        try {
+            const res = await searchApi.patientSearch(patientQuery);
+            setPatientResults(res.data);
+        } catch { }
+    };
+
+    // Search doctors
+    const searchDoctors = async () => {
+        if (!doctorQuery || doctorQuery.length < 2) return;
+        try {
+            const res = await searchApi.doctorSearch(doctorQuery);
+            setDoctorResults(res.data);
+        } catch { }
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(searchPatients, 300);
+        return () => clearTimeout(timer);
+    }, [patientQuery]);
+
+    useEffect(() => {
+        const timer = setTimeout(searchDoctors, 300);
+        return () => clearTimeout(timer);
+    }, [doctorQuery]);
+
+    const selectPatient = (patient: any) => {
+        setSelectedPatient({ id: patient.id, name: patient.full_name || patient.email });
+        setForm(p => ({ ...p, patient_id: patient.id }));
+        setPatientQuery("");
+        setPatientResults([]);
+    };
+
+    const selectDoctor = (doctor: any) => {
+        setSelectedDoctor({ id: doctor.id, name: doctor.user?.full_name || doctor.specialization });
+        setForm(p => ({ ...p, doctor_id: doctor.id }));
+        setDoctorQuery("");
+        setDoctorResults([]);
+    };
+
     const handleAISuggest = async () => {
+        if (!form.date) {
+            toast({ title: "Please select a date first", description: "AI needs a date to check availability", variant: "destructive" });
+            return;
+        }
         if (!form.description) {
             toast({ title: "Please enter a description first", variant: "destructive" });
             return;
@@ -60,15 +162,24 @@ const Appointments = () => {
         try {
             const response = await agentApi.suggestAppointment({
                 description: form.description,
-                appointment_date: form.date || undefined,
+                appointment_date: form.date, // Mandatory
                 patient_id: form.patient_id || undefined,
             });
 
             const suggestion = response.data;
 
+            // Set doctor if suggested
+            if (suggestion.doctor_id) {
+                setForm((p) => ({ ...p, doctor_id: suggestion.doctor_id }));
+                try {
+                    const res = await namesApi.getDoctorName(suggestion.doctor_id);
+                    setSelectedDoctor({ id: suggestion.doctor_id, name: res.data.full_name });
+                    setNameCache(prev => ({ ...prev, [`doctor_${suggestion.doctor_id}`]: res.data.full_name }));
+                } catch { }
+            }
+
             setForm((p) => ({
                 ...p,
-                doctor_id: suggestion.doctor_id || p.doctor_id,
                 slot: suggestion.slot_time || p.slot,
                 severity: suggestion.severity || p.severity,
                 description: suggestion.enhanced_description || p.description,
@@ -92,6 +203,7 @@ const Appointments = () => {
             });
             toast({ title: "Appointment created" });
             setModal(null);
+            resetForm();
             fetch();
         } catch {
             toast({ title: "Error", variant: "destructive" });
@@ -111,6 +223,7 @@ const Appointments = () => {
             });
             toast({ title: "Updated" });
             setModal(null);
+            resetForm();
             fetch();
         } catch {
             toast({ title: "Error", variant: "destructive" });
@@ -126,6 +239,26 @@ const Appointments = () => {
         } catch {
             toast({ title: "Error", variant: "destructive" });
         }
+    };
+
+    const resetForm = () => {
+        setForm({
+            patient_id: "",
+            doctor_id: "",
+            description: "",
+            date: "",
+            slot: "",
+            severity: "low",
+            remarks_text: "",
+            next_followup: "",
+        });
+        setSelectedPatient(null);
+        setSelectedDoctor(null);
+        setPatientQuery("");
+        setDoctorQuery("");
+        setPatientResults([]);
+        setDoctorResults([]);
+        setAvailableSlots([]);
     };
 
     const getSeverityColor = (severity: string) => {
@@ -148,16 +281,7 @@ const Appointments = () => {
                         {isAdmin && (
                             <GlassButton
                                 onClick={() => {
-                                    setForm({
-                                        patient_id: "",
-                                        doctor_id: "",
-                                        description: "",
-                                        date: "",
-                                        slot: "",
-                                        severity: "low",
-                                        remarks_text: "",
-                                        next_followup: "",
-                                    });
+                                    resetForm();
                                     setModal("create");
                                 }}
                             >
@@ -171,15 +295,15 @@ const Appointments = () => {
             {loading ? (
                 <Shimmer />
             ) : (
-                <GlassTable headers={["Date", "Slot", "Patient ID", "Doctor ID", "Description", "Severity", "Actions"]}>
+                <GlassTable headers={["Date", "Slot", "Patient", "Doctor", "Description", "Severity", "Actions"]}>
                     {filtered.map((a) => (
                         <tr key={a.id} className="hover:bg-background/20 transition-colors">
                             <td className="px-4 py-3 text-sm text-foreground">
                                 {new Date(a.date).toLocaleDateString()}
                             </td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">{a.slot}</td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground text-xs">{a.patient_id.substring(0, 8)}...</td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground text-xs">{a.doctor_id.substring(0, 8)}...</td>
+                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`patient_${a.patient_id}`] || 'Loading...'}</td>
+                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`doctor_${a.doctor_id}`] || 'Loading...'}</td>
                             <td className="px-4 py-3 text-sm text-foreground">{a.description}</td>
                             <td className={`px-4 py-3 text-sm font-medium capitalize ${getSeverityColor(a.severity)}`}>
                                 {a.severity}
@@ -199,6 +323,13 @@ const Appointments = () => {
                                                     severity: a.severity,
                                                     remarks_text: a.remarks?.text || "",
                                                     next_followup: a.next_followup || "",
+                                                });
+                                                // Also set selected doctor/patient for display
+                                                if (a.patient_id) fetchName('patient', a.patient_id).then(() => {
+                                                    setSelectedPatient({ id: a.patient_id, name: nameCache[`patient_${a.patient_id}`] || 'Unknown' });
+                                                });
+                                                if (a.doctor_id) fetchName('doctor', a.doctor_id).then(() => {
+                                                    setSelectedDoctor({ id: a.doctor_id, name: nameCache[`doctor_${a.doctor_id}`] || 'Unknown' });
                                                 });
                                                 setModal("edit");
                                             }}
@@ -223,26 +354,108 @@ const Appointments = () => {
             {/* Create/Edit Modal */}
             <GlassModal
                 open={modal === "create" || modal === "edit"}
-                onClose={() => setModal(null)}
+                onClose={() => { setModal(null); resetForm(); }}
                 title={modal === "create" ? "Add Appointment" : "Edit Appointment"}
+                className="max-w-3xl w-full max-h-[90vh] overflow-y-auto"
             >
                 <div className="space-y-4 pt-2">
                     {modal === "create" && (
                         <>
-                            <GlassInput
-                                label="Patient ID"
-                                value={form.patient_id}
-                                onChange={(v) => setForm((p) => ({ ...p, patient_id: v }))}
-                                placeholder="Optional"
-                            />
-                            <GlassInput
-                                label="Doctor ID"
-                                value={form.doctor_id}
-                                onChange={(v) => setForm((p) => ({ ...p, doctor_id: v }))}
-                                placeholder="AI will suggest"
-                            />
+                            {/* Patient Search */}
+                            <div>
+                                <label className="text-sm font-medium text-foreground block mb-2">Patient</label>
+                                {selectedPatient ? (
+                                    <div className="flex items-center justify-between bg-primary/10 border border-primary/30 rounded-lg px-3 py-2">
+                                        <span className="text-sm text-foreground">{selectedPatient.name}</span>
+                                        <button onClick={() => { setSelectedPatient(null); setForm(p => ({ ...p, patient_id: "" })); }} className="text-muted-foreground hover:text-destructive">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <GlassInput
+                                            label=""
+                                            value={patientQuery}
+                                            onChange={setPatientQuery}
+                                            placeholder="Search patient by name or email..."
+                                        />
+                                        {patientResults.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                {patientResults.map(p => (
+                                                    <div
+                                                        key={p.id}
+                                                        onClick={() => selectPatient(p)}
+                                                        className="px-3 py-2 hover:bg-primary/20 cursor-pointer text-sm border-b border-border last:border-0"
+                                                    >
+                                                        <div className="font-medium">{p.full_name}</div>
+                                                        <div className="text-xs text-muted-foreground">{p.email}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Doctor Search */}
+                            <div>
+                                <label className="text-sm font-medium text-foreground block mb-2">Doctor</label>
+                                {selectedDoctor ? (
+                                    <div className="flex items-center justify-between bg-primary/10 border border-primary/30 rounded-lg px-3 py-2">
+                                        <span className="text-sm text-foreground">{selectedDoctor.name}</span>
+                                        <button onClick={() => { setSelectedDoctor(null); setForm(p => ({ ...p, doctor_id: "" })); }} className="text-muted-foreground hover:text-destructive">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <GlassInput
+                                            label=""
+                                            value={doctorQuery}
+                                            onChange={setDoctorQuery}
+                                            placeholder="Search doctor by name or specialization..."
+                                        />
+                                        {doctorResults.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                {doctorResults.map(d => (
+                                                    <div
+                                                        key={d.id}
+                                                        onClick={() => selectDoctor(d)}
+                                                        className="px-3 py-2 hover:bg-primary/20 cursor-pointer text-sm border-b border-border last:border-0"
+                                                    >
+                                                        <div className="font-medium">{d.user?.full_name || 'Unknown'}</div>
+                                                        <div className="text-xs text-muted-foreground">{d.specialization}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </>
                     )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Date moved up per requirements so AI can use it */}
+                        <GlassInput
+                            label="Date (Required)"
+                            value={form.date}
+                            onChange={(v) => setForm((p) => ({ ...p, date: v }))}
+                            type="date"
+                        />
+                        <GlassSelect
+                            label="Severity"
+                            value={form.severity}
+                            onChange={(v) => setForm((p) => ({ ...p, severity: v as any }))}
+                            options={[
+                                { value: "low", label: "Low" },
+                                { value: "medium", label: "Medium" },
+                                { value: "high", label: "High" },
+                                { value: "critical", label: "Critical" },
+                            ]}
+                        />
+                    </div>
+
                     <GlassInput
                         label="Description"
                         value={form.description}
@@ -261,29 +474,49 @@ const Appointments = () => {
                         </GlassButton>
                     )}
 
-                    <GlassInput
-                        label="Date"
-                        value={form.date}
-                        onChange={(v) => setForm((p) => ({ ...p, date: v }))}
-                        type="date"
-                    />
-                    <GlassInput
-                        label="Time Slot"
-                        value={form.slot}
-                        onChange={(v) => setForm((p) => ({ ...p, slot: v }))}
-                        placeholder="e.g., 10:30"
-                    />
-                    <GlassSelect
-                        label="Severity"
-                        value={form.severity}
-                        onChange={(v) => setForm((p) => ({ ...p, severity: v as any }))}
-                        options={[
-                            { value: "low", label: "Low" },
-                            { value: "medium", label: "Medium" },
-                            { value: "high", label: "High" },
-                            { value: "critical", label: "Critical" },
-                        ]}
-                    />
+                    <div className="border-t border-border/30 pt-4"></div>
+
+                    {/* Slots UI */}
+                    <div>
+                        <label className="text-sm font-medium text-foreground block mb-2">Available Slots <span className="text-xs text-muted-foreground font-normal">(Select Doctor & Date to view)</span></label>
+                        {slotLoading ? (
+                            <div className="p-4 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                Loading slots...
+                            </div>
+                        ) : availableSlots.length > 0 ? (
+                            <div className="grid grid-cols-4 gap-2">
+                                {availableSlots.map((slot) => (
+                                    <button
+                                        key={slot.time}
+                                        onClick={() => setForm(p => ({ ...p, slot: slot.time }))}
+                                        disabled={slot.status === 'booked'}
+                                        className={`
+                                text-sm py-2 px-1 rounded transition-colors border
+                                ${form.slot === slot.time
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : slot.status === 'booked'
+                                                    ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
+                                                    : 'bg-background hover:bg-accent border-border'
+                                            }
+                            `}
+                                    >
+                                        {slot.time}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : form.doctor_id && form.date ? (
+                            <div className="text-center text-sm text-muted-foreground p-3 border border-dashed border-border rounded">No slots available</div>
+                        ) : (
+                            <div className="text-center text-sm text-muted-foreground p-3 bg-muted/20 rounded">
+                                Please select a Doctor and Date to view slots
+                            </div>
+                        )}
+                        {/* Fallback manual input if needed (hidden for now, or maybe as backup) */}
+                    </div>
+
+                    <div className="border-t border-border/30 pt-4"></div>
+
                     <GlassInput
                         label="Remarks"
                         value={form.remarks_text}
@@ -297,11 +530,12 @@ const Appointments = () => {
                         type="date"
                         placeholder="Optional"
                     />
+
                     <GlassButton
                         onClick={modal === "create" ? handleCreate : handleUpdate}
                         className="w-full"
                     >
-                        {modal === "create" ? "Create Appointment" : "Save"}
+                        {modal === "create" ? "Create Appointment" : "Save Changes"}
                     </GlassButton>
                 </div>
             </GlassModal>

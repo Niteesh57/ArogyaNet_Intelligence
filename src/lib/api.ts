@@ -64,6 +64,7 @@ export const doctorsApi = {
   searchPotential: (q: string) => api.get(`/doctors/search-potential?q=${q}`),
   update: (id: string, data: any) => api.put(`/doctors/${id}`, data),
   delete: (id: string) => api.delete(`/doctors/${id}`),
+  getSlots: (id: string, date: string) => api.get(`/doctors/${id}/slots?date=${date}`),
 };
 
 // Nurses
@@ -82,6 +83,7 @@ export const patientsApi = {
   get: (id: string) => api.get(`/patients/${id}`),
   update: (id: string, data: any) => api.put(`/patients/${id}`, data),
   delete: (id: string) => api.delete(`/patients/${id}`),
+  createWithAppointment: (data: any) => api.post("/patients/with-appointment", data),
 };
 
 // Inventory (Medicines)
@@ -131,6 +133,14 @@ export const searchApi = {
     return api.get(`/admin/staff/search?${params.toString()}`);
   },
   usersForStaff: (q: string) => api.get(`/search/users-for-staff?q=${q}`),
+  patientSearch: (q: string) => api.get(`/patients/search?q=${q}`),
+  doctorSearch: (q: string) => api.get(`/doctors/search?q=${q}`),
+};
+
+//Name Lookups
+export const namesApi = {
+  getPatientName: (id: string) => api.get(`/patients/${id}/name`),
+  getDoctorName: (id: string) => api.get(`/doctors/${id}/name`),
 };
 
 // AI Agent
@@ -138,6 +148,8 @@ export const agentApi = {
   suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string }) =>
     api.post("/agent/suggest-appointment", data),
 };
+
+
 
 // Appointments
 export const appointmentsApi = {
