@@ -61,6 +61,7 @@ export const adminApi = {
   createHospital: (data: any) => api.post("/admin/hospitals/create", data),
   registerDoctor: (data: any) => api.post("/admin/doctors/register", data),
   registerNurse: (data: any) => api.post("/admin/nurses/register", data),
+  updateRole: (userId: string, role: string) => api.put(`/admin/users/${userId}/role`, null, { params: { role } }),
 };
 
 // Doctors
@@ -80,19 +81,33 @@ export const nursesApi = {
   list: (skip = 0, limit = 100) => api.get(`/nurses/?skip=${skip}&limit=${limit}`),
   search: (q: string) => api.get(`/nurses/search?q=${q}`),
   searchPotential: (q: string) => api.get(`/nurses/search-potential?q=${q}`),
+  // Dashboard Stats
+  dashboardStats: () => api.get("/admin/dashboard/stats"),
+
+  // Update User Role
+  updateRole: (userId: string, role: string) => api.put(`/admin/users/${userId}/role`, null, { params: { role } }), // Role is a query param in backend?
+  // Let's check backend signature: (user_id: str, role: UserRole = Query(...))? 
+  // Line 363: async def update_user_role(user_id: str, role: UserRole, ...)
+  // By default in FastAPI, simple types are query params unless Body is specified.
+  // So `role` is a Query param.
+
+  // Register Nurse
+  registerNurse: (data: any) => api.post("/admin/nurses/register", data),
   update: (id: string, data: any) => api.put(`/nurses/${id}`, data),
   delete: (id: string) => api.delete(`/nurses/${id}`),
 };
 
 // Patients
 export const patientsApi = {
-  list: (skip = 0, limit = 100) => api.get(`/patients/?skip=${skip}&limit=${limit}`),
+  list: () => api.get("/patients/"),
   create: (data: any) => api.post("/patients/", data),
   // Note: No GET /patients/{id} in backend — use list + filter or search instead
   update: (id: string, data: any) => api.put(`/patients/${id}`, data),
   delete: (id: string) => api.delete(`/patients/${id}`),
   createWithAppointment: (data: any) => api.post("/patients/with-appointment", data),
   search: (q: string) => api.get(`/patients/search?q=${q}`),
+  get: (id: string) => api.get(`/patients/${id}`), // Added method
+  assignNurse: (id: string, nurseId: string) => api.put(`/patients/${id}/assign-nurse?nurse_id=${nurseId}`),
 };
 
 // Inventory (Medicines)
@@ -174,17 +189,17 @@ export const voiceApi = {
 
 // Documents
 export const documentsApi = {
-  upload: (file: File, title: string, appointment_id?: string) => {
+  upload: (file: File, title: string, appointmentId?: string) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("title", title);
-    if (appointment_id) formData.append("appointment_id", appointment_id);
+    if (appointmentId) formData.append("appointment_id", appointmentId);
     return api.post("/documents/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
   getForAppointment: (appointmentId: string) => api.get(`/documents/appointment/${appointmentId}`),
-  list: () => api.get("/documents/my-documents"),
+  getMyDocuments: () => api.get("/documents/my-documents"),
 };
 
 // AI Agent
@@ -204,14 +219,11 @@ export const appointmentsApi = {
   getMyAppointments: () => api.get("/appointments/my-appointments"),
   update: (id: string, data: any) => api.put(`/appointments/${id}`, data),
   delete: (id: string) => api.delete(`/appointments/${id}`),
-  consultation: (id: string, remarks: any, severity?: string, nextFollowup?: string, status?: string) => {
-    const params = new URLSearchParams();
-    if (severity) params.append('severity', severity);
-    if (status) params.append('status', status);
-    if (nextFollowup) params.append('next_followup', nextFollowup);
-    const qs = params.toString();
-    return api.post(`/appointments/${id}/consultation${qs ? '?' + qs : ''}`, remarks);
-  },
+  consultation: (id: string, remarks: any, severity?: string, nextFollowup?: string, status?: string) => api.post(`/appointments/${id}/consultation`, remarks, { params: { severity, next_followup: nextFollowup, status } }),
+  addVitals: (id: string, data: any) => api.post(`/appointments/${id}/vitals`, data),
+  assignNurse: (id: string, nurseId: string) => api.put(`/appointments/${id}/assign-nurse?nurse_id=${nurseId}`),
+  getForNurse: () => api.get("/appointments/nurse/assigned"),
+  getVitals: (id: string) => api.get(`/appointments/${id}/vitals`),
 };
 
 // Lab Reports
@@ -237,6 +249,7 @@ export const usersApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+  searchNurses: (q: string) => api.get(`/users/search/nurses?q=${q}`),
 };
 
 

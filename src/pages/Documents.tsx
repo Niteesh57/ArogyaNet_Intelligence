@@ -30,7 +30,7 @@ const Documents = () => {
     const fetchDocuments = async () => {
         setLoading(true);
         try {
-            const res = await documentsApi.list();
+            const res = await documentsApi.getMyDocuments();
             setDocuments(res.data);
         } catch (e) {
             console.error(e);

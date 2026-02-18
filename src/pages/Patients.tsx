@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { patientsApi, adminApi, searchApi, agentApi, namesApi, doctorsApi } from "@/lib/api";
+import { patientsApi, adminApi, searchApi, agentApi, namesApi, doctorsApi, appointmentsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
@@ -59,6 +59,17 @@ const Patients = () => {
     setLoading(true);
     if (isAdmin) {
       patientsApi.list().then((r) => setPatients(r.data)).catch(() => { }).finally(() => setLoading(false));
+    } else if (user?.role === 'nurse') {
+      appointmentsApi.getForNurse().then((r) => {
+        // Extract unique patients from assigned appointments
+        const uniquePatientsMap = new Map();
+        r.data.forEach((appt: any) => {
+          if (appt.patient && !uniquePatientsMap.has(appt.patient_id)) {
+            uniquePatientsMap.set(appt.patient_id, appt.patient);
+          }
+        });
+        setPatients(Array.from(uniquePatientsMap.values()));
+      }).catch(() => setPatients([])).finally(() => setLoading(false));
     } else {
       // Doctor role: fetch patients assigned to this doctor
       doctorsApi.getMyPatients().then((r) => setPatients(r.data)).catch(() => {
