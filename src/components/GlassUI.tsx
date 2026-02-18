@@ -20,24 +20,21 @@ export const GlassModal = ({ open, onClose, title, children, className }: GlassM
   </Dialog>
 );
 
-interface GlassInputProps {
+interface GlassInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-  className?: string;
+  className?: string; // override className logic if needed, but we append it
 }
 
-export const GlassInput = ({ label, value, onChange, type = "text", placeholder, className }: GlassInputProps) => (
+export const GlassInput = ({ label, value, onChange, className, ...props }: GlassInputProps) => (
   <div className={`space-y-2 ${className}`}>
-    <label className="block text-sm font-medium text-foreground">{label}</label>
+    {label && <label className="block text-sm font-medium text-foreground">{label}</label>}
     <input
-      type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
       className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      {...props}
     />
   </div>
 );

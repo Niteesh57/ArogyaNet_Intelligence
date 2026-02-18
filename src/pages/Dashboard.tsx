@@ -3,12 +3,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { adminApi, appointmentsApi, namesApi, doctorsApi, patientsApi, searchApi } from "@/lib/api";
 import {
   Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck
+  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Onboarding from "./Onboarding";
 import { PatientBookingForm } from "@/components/PatientBookingForm";
 import { ConsultationModal } from "@/components/ConsultationModal";
+import { AppointmentChatModal } from "@/components/AppointmentChatModal";
 import { GlassButton, GlassModal, GlassInput, Shimmer, GlassCard } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
 
@@ -160,6 +161,10 @@ const PatientDashboard = ({ user }: { user: any }) => {
   const [loadingAppts, setLoadingAppts] = useState(true);
   const [bookModal, setBookModal] = useState(false);
 
+  // Chat Modal State
+  const [chatModal, setChatModal] = useState(false);
+  const [chatAppointment, setChatAppointment] = useState<{ id: string, patientName: string } | null>(null);
+
   const fetchAppointments = async () => {
     try {
       setLoadingAppts(true);
@@ -181,7 +186,6 @@ const PatientDashboard = ({ user }: { user: any }) => {
   const [slotLoading, setSlotLoading] = useState(false);
   const [doctorName, setDoctorName] = useState("");
 
-  // Fetch patient appointments using the proper endpoint
   // Fetch patient appointments
   useEffect(() => {
     fetchAppointments();
@@ -207,8 +211,6 @@ const PatientDashboard = ({ user }: { user: any }) => {
         slot: form.slot,
         severity: form.severity,
       });
-      toast({ title: "Appointment Updated ✓" });
-      setEditModal(false);
       toast({ title: "Appointment Updated ✓" });
       setEditModal(false);
       // Refresh
@@ -336,6 +338,17 @@ const PatientDashboard = ({ user }: { user: any }) => {
                   </div>
                   {!isPast && (
                     <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          setChatAppointment({ id: apt.id, patientName: user?.full_name || "Me" });
+                          setChatModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                        title="DocuMate Chat"
+                      >
+                        <Bot className="w-3.5 h-3.5 mr-1" />
+                        DocuMate
+                      </button>
                       <GlassButton size="sm" variant="ghost" onClick={() => openEdit(apt)}>
                         <Pencil className="w-4 h-4 mr-2" /> Reschedule
                       </GlassButton>
@@ -413,6 +426,16 @@ const PatientDashboard = ({ user }: { user: any }) => {
           }} />
         </div>
       </GlassModal>
+
+      {/* Chat Modal */}
+      {chatAppointment && (
+        <AppointmentChatModal
+          open={chatModal}
+          onClose={() => setChatModal(false)}
+          appointmentId={chatAppointment.id}
+          patientName={chatAppointment.patientName}
+        />
+      )}
     </div>
   );
 };
@@ -426,6 +449,10 @@ const DoctorDayPanel = ({ selectedDate, todayStr, selectedAppts, nameCache, onCo
   nameCache: Record<string, string>; onConsultationSaved: () => void;
 }) => {
   const [consultAppt, setConsultAppt] = useState<any>(null);
+
+  // Chat Modal State
+  const [chatModal, setChatModal] = useState(false);
+  const [chatAppointment, setChatAppointment] = useState<{ id: string, patientName: string } | null>(null);
 
   return (
     <>
@@ -483,14 +510,26 @@ const DoctorDayPanel = ({ selectedDate, todayStr, selectedAppts, nameCache, onCo
                       </div>
                     )}
 
-                    {/* Consultation button */}
-                    <button
-                      onClick={() => setConsultAppt(apt)}
-                      className="mt-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-                    >
-                      <Stethoscope className="w-3 h-3" />
-                      {apt.remarks ? "Update Consultation" : "Start Consultation"}
-                    </button>
+                    {/* Buttons */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <button
+                        onClick={() => setConsultAppt(apt)}
+                        className="bg-primary/10 hover:bg-primary/20 text-primary text-xs px-2 py-1 rounded border border-primary/20 flex items-center gap-1 transition-colors"
+                      >
+                        <Stethoscope className="w-3 h-3" />
+                        {apt.remarks ? "Update" : "Consult"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setChatAppointment({ id: apt.id, patientName: nameCache[apt.patient_id] || "Patient" });
+                          setChatModal(true);
+                        }}
+                        className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 text-xs px-2 py-1 rounded border border-purple-500/20 flex items-center gap-1 transition-colors"
+                      >
+                        <Bot className="w-3 h-3" />
+                        DocuMate
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -511,6 +550,16 @@ const DoctorDayPanel = ({ selectedDate, todayStr, selectedAppts, nameCache, onCo
           onSuccess={() => { setConsultAppt(null); onConsultationSaved(); }}
           appointment={consultAppt}
           patientName={nameCache[consultAppt.patient_id] || "Patient"}
+        />
+      )}
+
+      {/* Chat Modal */}
+      {chatAppointment && (
+        <AppointmentChatModal
+          open={chatModal}
+          onClose={() => setChatModal(false)}
+          appointmentId={chatAppointment.id}
+          patientName={chatAppointment.patientName}
         />
       )}
     </>

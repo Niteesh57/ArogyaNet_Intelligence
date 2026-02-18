@@ -174,14 +174,16 @@ export const voiceApi = {
 
 // Documents
 export const documentsApi = {
-  upload: (file: File, title: string) => {
+  upload: (file: File, title: string, appointment_id?: string) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("title", title);
+    if (appointment_id) formData.append("appointment_id", appointment_id);
     return api.post("/documents/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+  getForAppointment: (appointmentId: string) => api.get(`/documents/appointment/${appointmentId}`),
   list: () => api.get("/documents/my-documents"),
 };
 
@@ -189,8 +191,9 @@ export const documentsApi = {
 export const agentApi = {
   suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string; hospital_id?: string }) =>
     api.post("/agent/suggest-appointment", data),
-  analyze: (data: { document_url: string; question: string }) =>
+  analyze: (data: { document_url: string; question: string; appointment_id?: string }) =>
     api.post("/agent/analyze", data),
+  getChatHistory: (appointmentId: string) => api.get(`/agent/appointments/${appointmentId}/chat`),
 };
 
 export const appointmentsApi = {

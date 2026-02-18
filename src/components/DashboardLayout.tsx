@@ -14,8 +14,8 @@ const navItems = [
   { title: "Appointments", path: "/appointments", icon: Calendar, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
   { title: "Medicines", path: "/medicines", icon: Package, roles: ["super_admin", "hospital_admin"] },
   { title: "Lab Tests", path: "/lab-tests", icon: FlaskConical, roles: ["super_admin", "hospital_admin"] },
-  { title: "Lab Reports", path: "/lab-reports", icon: FileText, roles: ["super_admin", "hospital_admin", "doctor", "nurse", "patient"] },
-  { title: "Documents", path: "/documents", icon: FileIcon, roles: ["super_admin", "hospital_admin", "doctor", "nurse", "patient"] },
+  // Documents are now accessed via Appointment Chat
+  // { title: "Documents", path: "/documents", icon: FileIcon, roles: ["super_admin", "hospital_admin", "doctor", "nurse", "patient"] },
   { title: "Floors", path: "/floors", icon: Building2, roles: ["super_admin", "hospital_admin"] },
   { title: "Availability", path: "/availability", icon: CalendarClock, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
 ];

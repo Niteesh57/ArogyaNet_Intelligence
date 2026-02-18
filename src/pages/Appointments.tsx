@@ -4,8 +4,9 @@ import { appointmentsApi, searchApi, agentApi, namesApi, doctorsApi } from "@/li
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Sparkles, X, Clock, Stethoscope } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, X, Clock, Stethoscope, Bot } from "lucide-react";
 import { GeminiLoadingModal } from "@/components/GeminiAnimation";
+import { AppointmentChatModal } from "@/components/AppointmentChatModal";
 
 interface Appointment {
     id: string;
@@ -37,6 +38,10 @@ const Appointments = () => {
     const [modal, setModal] = useState<"create" | "edit" | null>(null);
     const [selected, setSelected] = useState<Appointment | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
+
+    // Chat Modal State
+    const [chatModal, setChatModal] = useState(false);
+    const [chatAppointment, setChatAppointment] = useState<{ id: string, patientName: string } | null>(null);
 
     // Status Workflow State
     const [activeTab, setActiveTab] = useState<"started" | "in_progress" | "finished" | "admitted">("started");
@@ -430,6 +435,20 @@ const Appointments = () => {
                                                     <Stethoscope className="w-3.5 h-3.5" />
                                                     {a.remarks ? "Update" : "Record"}
                                                 </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setChatAppointment({
+                                                            id: a.id,
+                                                            patientName: nameCache[`patient_${a.patient_id}`] || 'Patient'
+                                                        });
+                                                        setChatModal(true);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                                                    title="DocuMate Chat"
+                                                >
+                                                    <Bot className="w-3.5 h-3.5" />
+                                                    DocuMate
+                                                </button>
                                                 {isAdmin && (
                                                     <>
                                                         <button
@@ -667,6 +686,16 @@ const Appointments = () => {
 
             {/* AI Loading Modal */}
             {aiLoading && <GeminiLoadingModal message="AI is analyzing symptoms..." />}
+
+            {/* Chat Modal */}
+            {chatAppointment && (
+                <AppointmentChatModal
+                    open={chatModal}
+                    onClose={() => setChatModal(false)}
+                    appointmentId={chatAppointment.id}
+                    patientName={chatAppointment.patientName}
+                />
+            )}
         </div>
     );
 };
