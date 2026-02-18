@@ -3,7 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Building2, CalendarClock, LogOut, Menu, X, ChevronLeft, Calendar, FileText
+  Building2, CalendarClock, LogOut, Menu, X, ChevronLeft, Calendar, FileText, File as FileIcon
 } from "lucide-react";
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
   { title: "Medicines", path: "/medicines", icon: Package, roles: ["super_admin", "hospital_admin"] },
   { title: "Lab Tests", path: "/lab-tests", icon: FlaskConical, roles: ["super_admin", "hospital_admin"] },
   { title: "Lab Reports", path: "/lab-reports", icon: FileText, roles: ["super_admin", "hospital_admin", "doctor", "nurse", "patient"] },
+  { title: "Documents", path: "/documents", icon: FileIcon, roles: ["super_admin", "hospital_admin", "doctor", "nurse", "patient"] },
   { title: "Floors", path: "/floors", icon: Building2, roles: ["super_admin", "hospital_admin"] },
   { title: "Availability", path: "/availability", icon: CalendarClock, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
 ];

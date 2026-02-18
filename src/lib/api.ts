@@ -161,15 +161,38 @@ export const namesApi = {
   getDoctorName: (id: string) => api.get(`/doctors/${id}/name`),
 };
 
+// Voice
+export const voiceApi = {
+  transcribe: (blob: Blob) => {
+    const formData = new FormData();
+    formData.append("file", blob, "recording.webm");
+    return api.post("/voice/transcribe", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+};
+
+// Documents
+export const documentsApi = {
+  upload: (file: File, title: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", title);
+    return api.post("/documents/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  list: () => api.get("/documents/my-documents"),
+};
+
 // AI Agent
 export const agentApi = {
   suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string; hospital_id?: string }) =>
     api.post("/agent/suggest-appointment", data),
+  analyze: (data: { document_url: string; question: string }) =>
+    api.post("/agent/analyze", data),
 };
 
-
-
-// Appointments
 export const appointmentsApi = {
   create: (data: any) => api.post("/appointments/", data),
   list: (skip = 0, limit = 100) => api.get(`/appointments/?skip=${skip}&limit=${limit}`),
@@ -213,13 +236,4 @@ export const usersApi = {
   },
 };
 
-// Voice
-export const voiceApi = {
-  transcribe: (blob: Blob) => {
-    const formData = new FormData();
-    formData.append("file", blob, "recording.webm");
-    return api.post("/voice/transcribe", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  },
-};
+
