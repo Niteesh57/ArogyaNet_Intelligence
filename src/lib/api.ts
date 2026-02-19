@@ -263,4 +263,12 @@ export const usersApi = {
   updateMe: (data: any) => api.put("/users/me", data),
 };
 
+export const eventsApi = {
+  list: (skip = 0, limit = 100) => api.get(`/events/?skip=${skip}&limit=${limit}`),
+  create: (data: { event_name?: string; keys?: string[] }) => api.post("/events/", data),
+  get: (id: string) => api.get(`/events/${id}`),
+  append: (id: string, data: any) => api.patch(`/events/${id}/append`, { data }),
+  update: (id: string, data: any) => api.put(`/events/${id}`, data),
+};
+
 

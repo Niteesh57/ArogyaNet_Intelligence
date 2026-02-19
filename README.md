@@ -1,73 +1,61 @@
-# Welcome to your Lovable project
+# Life Health Secure Access
 
-## Project info
+A high-fidelity, secure healthcare platform featuring a "Modern Organic" Design System and an advanced AI Ecosystem for clinical efficiency.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 💎 Glass UI Design System
 
-## How can I edit this code?
+The application utilizes a custom-built **Modern Organic** glassmorphism design system to provide a premium, cohesive user experience. Core components include:
 
-There are several ways of editing your application.
+- **GlassCard & GlassModal**: Backdrop-blur surfaces with subtle translucent borders.
+- **GlassButton**: Interactive elements with shimmer effects and scale transitions.
+- **GlassInput & GlassSelect**: Consistent form controls designed for accessibility and visual depth.
+- **GlassTable**: Sophisticated data grids with shimmer loading states.
 
-**Use Lovable**
+## 🧠 AI Ecosystem
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Integrated advanced AI agents to streamline medical workflows:
 
-Changes made via Lovable will be committed automatically to this repo.
+- **MedVQA Agent**: Powered by **MedGemma**, performing clinical analysis of medical documents (PDFs) and vision-based diagnostic assistance.
+- **Medical ASR**: Real-time voice transcription using specialized models for medical terminology, supporting both file uploads and live WebSockets.
+- **Intelligent Chat**: A real-time chat interface with streaming responses and tool-calling visualization for intuitive task execution.
+- **Multilingual Accessibility**: Real-time translation of messages based on user language preferences to support global healthcare teams.
 
-**Use your preferred IDE**
+## 🛠️ Tech Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React, Vite, TypeScript, Tailwind CSS, shadcn/ui.
+- **Backend**: FastAPI (Python), SQLAlchemy (Async), Pydantic.
+- **AI/ML**: MedGemma, HuggingFace Transformers, Google Translate API.
+- **Communication**: WebSockets for real-time Voice-to-Text and Chat.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🚀 Getting Started
 
-Follow these steps:
+### Prerequisites
+- Node.js & npm (v18+)
+- Python 3.10+ (for backend)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Installation
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Clone the repository**:
+   ```sh
+   git clone <repo-url>
+   cd life-health-secure-access
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. **Frontend Setup**:
+   ```sh
+   npm i
+   npm run dev
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+3. **Backend Setup**:
+   Navigate to the backend directory and follow the [Backend README](file:///c:/Users/venka/Backend/life_health_crm/README.md).
 
-**Edit a file directly in GitHub**
+## 🗺️ Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `src/components/`: Reusable Glass UI components.
+- `src/pages/`: Modular page views including Dashboard, Events, and Healthcare portals.
+- `src/hooks/`: Custom React Query hooks for API interaction.
+- `src/services/`: API client configurations.
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+Built with ❤️ for advanced healthcare management.
