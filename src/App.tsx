@@ -18,6 +18,7 @@ import Floors from "./pages/Floors";
 import Availability from "./pages/Availability";
 import Appointments from "./pages/Appointments";
 import LabReports from "./pages/LabReports";
+import LabAssistants from "./pages/LabAssistants";
 import Consultation from "./pages/Consultation";
 import Documents from "./pages/Documents";
 import OAuthSuccess from "./pages/OAuthSuccess";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/appointments" element={<ProtectedPage><Appointments /></ProtectedPage>} />
             <Route path="/consultation/:id" element={<ProtectedPage><Consultation /></ProtectedPage>} />
             <Route path="/lab-reports" element={<ProtectedPage><LabReports /></ProtectedPage>} />
+            <Route path="/lab-assistants" element={<ProtectedPage><LabAssistants /></ProtectedPage>} />
             <Route path="/documents" element={<ProtectedPage><Documents /></ProtectedPage>} />
             <Route path="/onboarding" element={<ProtectedPage><Onboarding /></ProtectedPage>} />
             <Route path="/oauth-success" element={<OAuthSuccess />} />

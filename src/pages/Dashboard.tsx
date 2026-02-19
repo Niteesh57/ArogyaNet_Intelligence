@@ -102,7 +102,7 @@ const AdminUserSearch = () => {
     if (!query) return;
     setLoading(true);
     try {
-      const res = await usersApi.searchUsersForStaff(query); // Fixed: intended for staff role assignment? Or generic User search? usersApi.searchPatients searches generic. Wait, api.ts says searchPatients calls /search/patients. searchUsersForStaff calls /search/users-for-staff. Let's use searchUsersForStaff as it likely returns User objects needed for role update.
+      const res = await usersApi.searchUsersForStaff(query);
       setResults(res.data);
     } catch (e) { toast({ title: "Search failed" }); }
     finally { setLoading(false); }
@@ -110,21 +110,24 @@ const AdminUserSearch = () => {
 
   const handleRoleUpdate = async (userId: string, newRole: string) => {
     try {
-      await adminApi.registerNurse({ user_id: userId, department: "General" }); // Using registerNurse for nurses. What about Lab Asst?
-      // Wait, adminApi.updateRole is missing in api.ts?
-      // Step 2928 diff showed adding adminApi.updateRole? No, I checked api.ts content in Step 2980 and it DOES NOT have updateRole in adminApi!
-      // I MUST FIX THIS. 
-      // But for now, let's look at `AdminUserSearch` implementation in the corrupted file (line 115): `await adminApi.updateRole(userId, newRole);`
-      // Since it's missing in api.ts, this will crash.
-      // I should add `updateRole` to `adminApi` in `api.ts`.
-      // The backend endpoint `PUT /users/{user_id}/role` exists (admin.py).
-      // I'll add `updateRole` for `adminApi` in `api.ts` in the NEXT step.
-      // For now, I'll keep the call and fix api.ts immediately after.
-      await (adminApi as any).updateRole(userId, newRole);
+      if (newRole === "lab_assistant") {
+        await adminApi.createLabAssistant({ user_id: userId });
+        toast({ title: "Promoted to Lab Assistant", description: "User can now access Lab Dashboard" });
+      } else if (newRole === "nurse") {
+        await adminApi.registerNurse({ user_search_query: userId, department: "General" });
+        toast({ title: "Promoted to Nurse", description: "User can now access Nurse Dashboard" });
+      } else {
+        // Fallback for other roles or demotion
+        // Note: Demotion to BASE isn't explicitly in the UI buttons yet, but good to have API ready
+        await adminApi.updateRole(userId, newRole);
+        toast({ title: "Role updated successfully" });
+      }
 
-      toast({ title: "Role updated successfully" });
-      handleSearch(); // Refresh
-    } catch (e) { toast({ title: "Update failed (Ensure API is updated)", variant: "destructive" }); }
+      handleSearch(); // Refresh list
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Update failed", description: "Ensure user is in BASE role", variant: "destructive" });
+    }
   };
 
   return (
@@ -144,17 +147,23 @@ const AdminUserSearch = () => {
           <div key={u.id} className="flex justify-between items-center p-2 rounded hover:bg-secondary/20 border border-transparent hover:border-border/50">
             <div>
               <p className="font-medium">{u.full_name}</p>
-              <p className="text-xs text-muted-foreground">{u.email} • {u.role}</p>
+              <p className="text-xs text-muted-foreground">{u.email} • <span className="font-mono">{u.role}</span></p>
             </div>
             <div className="flex gap-1">
-              {u.role !== "lab_assistant" && (
-                <button onClick={() => handleRoleUpdate(u.id, "lab_assistant")} className="text-[10px] px-2 py-1 bg-purple-500/10 text-purple-500 rounded border border-purple-500/20 hover:bg-purple-500/20">
-                  Make Lab Asst
-                </button>
+              {u.role === "base" && (
+                <>
+                  <button onClick={() => handleRoleUpdate(u.id, "lab_assistant")} className="text-[10px] px-2 py-1 bg-purple-500/10 text-purple-500 rounded border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+                    Make Lab Asst
+                  </button>
+                  <button onClick={() => handleRoleUpdate(u.id, "nurse")} className="text-[10px] px-2 py-1 bg-pink-500/10 text-pink-500 rounded border border-pink-500/20 hover:bg-pink-500/20 transition-colors">
+                    Make Nurse
+                  </button>
+                </>
               )}
-              {u.role !== "nurse" && (
-                <button onClick={() => handleRoleUpdate(u.id, "nurse")} className="text-[10px] px-2 py-1 bg-pink-500/10 text-pink-500 rounded border border-pink-500/20 hover:bg-pink-500/20">
-                  Make Nurse
+              {/* Allow demotion if needed, or removing roles. For now, matching previous UI capabilities but safer */}
+              {u.role === "lab_assistant" && (
+                <button onClick={() => handleRoleUpdate(u.id, "base")} className="text-[10px] px-2 py-1 bg-red-500/10 text-red-500 rounded border border-red-500/20 hover:bg-red-500/20 transition-colors">
+                  Remove Role
                 </button>
               )}
             </div>

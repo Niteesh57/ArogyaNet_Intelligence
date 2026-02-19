@@ -62,6 +62,9 @@ export const adminApi = {
   registerDoctor: (data: any) => api.post("/admin/doctors/register", data),
   registerNurse: (data: any) => api.post("/admin/nurses/register", data),
   updateRole: (userId: string, role: string) => api.put(`/admin/users/${userId}/role`, null, { params: { role } }),
+  createLabAssistant: (data: any) => api.post("/admin/lab-assistants/create", data),
+  removeLabAssistant: (userId: string) => api.delete(`/admin/lab-assistants/${userId}`),
+  listLabAssistants: (skip = 0, limit = 100) => api.get(`/admin/lab-assistants?skip=${skip}&limit=${limit}`),
 };
 
 // Doctors
@@ -224,6 +227,7 @@ export const appointmentsApi = {
   assignNurse: (id: string, nurseId: string) => api.put(`/appointments/${id}/assign-nurse?nurse_id=${nurseId}`),
   getForNurse: () => api.get("/appointments/nurse/assigned"),
   getVitals: (id: string) => api.get(`/appointments/${id}/vitals`),
+  search: (patientId: string, doctorId: string) => api.get(`/appointments/search?patient_id=${patientId}&doctor_id=${doctorId}`),
 };
 
 // Lab Reports

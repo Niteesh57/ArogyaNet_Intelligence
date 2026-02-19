@@ -58,6 +58,15 @@ export const UserSearch = ({ onSelect, label = "Search User", placeholder = "Sea
         setQuery("");
     };
 
+    const getDisplayInfo = (item: any) => {
+        const u = item?.user || item;
+        return {
+            name: u?.full_name || item?.full_name || item?.name || "Unknown Name",
+            email: u?.email || item?.email || "",
+            image: u?.image || item?.image || null,
+        };
+    };
+
     return (
         <div className="space-y-2" ref={dropdownRef}>
             <label className="block text-sm font-medium text-foreground">{label}</label>
@@ -68,14 +77,14 @@ export const UserSearch = ({ onSelect, label = "Search User", placeholder = "Sea
                 >
                     {selectedUser ? (
                         <div className="flex items-center gap-2">
-                            {selectedUser.image ? (
-                                <img src={selectedUser.image} alt={selectedUser.full_name} className="w-5 h-5 rounded-full object-cover" />
+                            {getDisplayInfo(selectedUser).image ? (
+                                <img src={getDisplayInfo(selectedUser).image!} alt={getDisplayInfo(selectedUser).name} className="w-5 h-5 rounded-full object-cover" />
                             ) : (
                                 <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px]">
-                                    {selectedUser.full_name?.[0] || selectedUser.email[0]}
+                                    {getDisplayInfo(selectedUser).name[0] || getDisplayInfo(selectedUser).email[0]}
                                 </div>
                             )}
-                            <span>{selectedUser.full_name || selectedUser.email}</span>
+                            <span>{getDisplayInfo(selectedUser).name || getDisplayInfo(selectedUser).email}</span>
                         </div>
                     ) : (
                         <span className="text-muted-foreground">{placeholder}</span>
@@ -103,32 +112,35 @@ export const UserSearch = ({ onSelect, label = "Search User", placeholder = "Sea
                             {!loading && users.length === 0 && query.length < 2 && (
                                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">Type at least 2 characters.</div>
                             )}
-                            {users.map((user) => (
-                                <div
-                                    key={user.id}
-                                    className={cn(
-                                        "relative flex items-center px-2 py-2 text-sm rounded-sm cursor-pointer select-none hover:bg-accent hover:text-accent-foreground",
-                                        selectedUser?.id === user.id && "bg-accent/50"
-                                    )}
-                                    onClick={() => handleSelect(user)}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {user.image ? (
-                                            <img src={user.image} alt={user.full_name} className="w-8 h-8 rounded-full object-cover border border-border" />
-                                        ) : (
-                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                <User className="w-4 h-4" />
-                                            </div>
+                            {users.map((item) => {
+                                const info = getDisplayInfo(item);
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className={cn(
+                                            "relative flex items-center px-2 py-2 text-sm rounded-sm cursor-pointer select-none hover:bg-accent hover:text-accent-foreground",
+                                            selectedUser?.id === item.id && "bg-accent/50"
                                         )}
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-foreground">{user.full_name || "Unknown Name"}</span>
-                                            <span className="text-xs text-muted-foreground">{user.email}</span>
-                                            {user.compact_id && <span className="text-[10px] text-muted-foreground/80 font-mono">{user.compact_id}</span>}
+                                        onClick={() => handleSelect(item)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {info.image ? (
+                                                <img src={info.image} alt={info.name} className="w-8 h-8 rounded-full object-cover border border-border" />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                    <User className="w-4 h-4" />
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-foreground">{info.name}</span>
+                                                <span className="text-xs text-muted-foreground">{info.email}</span>
+                                                {item.compact_id && <span className="text-[10px] text-muted-foreground/80 font-mono">{item.compact_id}</span>}
+                                            </div>
                                         </div>
+                                        {selectedUser?.id === item.id && <Check className="w-4 h-4 ml-auto" />}
                                     </div>
-                                    {selectedUser?.id === user.id && <Check className="w-4 h-4 ml-auto" />}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

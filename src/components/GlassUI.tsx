@@ -24,18 +24,26 @@ interface GlassInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
   label: string;
   value: string;
   onChange: (v: string) => void;
-  className?: string; // override className logic if needed, but we append it
+  className?: string;
+  icon?: any;
 }
 
-export const GlassInput = ({ label, value, onChange, className, ...props }: GlassInputProps) => (
+export const GlassInput = ({ label, value, onChange, className, icon: Icon, ...props }: GlassInputProps) => (
   <div className={`space-y-2 ${className}`}>
     {label && <label className="block text-sm font-medium text-foreground">{label}</label>}
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-      {...props}
-    />
+    <div className="relative">
+      {Icon && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <Icon className="w-4 h-4" />
+        </div>
+      )}
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full bg-background border border-input rounded-md ${Icon ? 'pl-9' : 'px-3'} py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+        {...props}
+      />
+    </div>
   </div>
 );
 
@@ -127,10 +135,8 @@ export const SearchBar = ({ value, onChange, placeholder = "Search..." }: {
   />
 );
 
-export const Shimmer = () => (
-  <div className="space-y-4 animate-pulse">
-    {[...Array(5)].map((_, i) => (
-      <div key={i} className="h-12 rounded-lg bg-background/30" />
-    ))}
+export const Shimmer = ({ className = "" }: { className?: string }) => (
+  <div className={`space-y-4 animate-pulse ${className}`}>
+    <div className="h-full w-full rounded-lg bg-muted/30" />
   </div>
 );
