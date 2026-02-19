@@ -7,8 +7,10 @@ import {
     Pill, FlaskConical, X, Search, Loader2, FileText,
     AlertTriangle, CalendarPlus, Send, ArrowLeft,
     Mic, MicOff, Square, Stethoscope, Plus, Waves, Check,
-    Activity, Heart, Calendar, Thermometer, Wind
+    Activity, Heart, Calendar, Thermometer, Wind, Phone, RefreshCw, MessageSquare, Bot, User
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { agentApi } from "@/lib/api";
 
 /* ─── Types ─── */
 interface MedicineItem { id: string; name: string; dosage?: string; }
@@ -148,6 +150,7 @@ function useAudioRecorder(onRecordingComplete: (blob: Blob) => void) {
 const Consultation = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     // Appointment data
     const [appointment, setAppointment] = useState<any>(null);
@@ -170,6 +173,8 @@ const Consultation = () => {
     const [nextFollowup, setNextFollowup] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
+
+
     // ... existing search hooks ...
 
     // Load appointment data
@@ -179,6 +184,12 @@ const Consultation = () => {
             try {
                 const res = await appointmentsApi.get(id);
                 const appt = res.data;
+                console.log("DEBUG: Consultation Data", {
+                    userRole: user?.role,
+                    patient: appt.patient,
+                    patientPhone: appt.patient?.phone,
+                    fullAppt: appt
+                });
                 setAppointment(appt);
 
                 // Pre-fill existing data
@@ -284,6 +295,8 @@ const Consultation = () => {
         }
     };
 
+
+
     // ... rest of helpers ...
 
     // RENDER
@@ -364,11 +377,31 @@ const Consultation = () => {
                 if (appt.severity) setSeverity(appt.severity);
                 if (appt.next_followup) setNextFollowup(appt.next_followup);
 
-                // Fetch patient name
+                // Fetch patient name and details if missing
                 try {
-                    const nameRes = await namesApi.getPatientName(appt.patient_id);
-                    setPatientName(nameRes.data.full_name);
-                } catch { }
+                    // Always fetch fresh patient data to get the phone number if it wasn't included in the appointment
+                    if (!appt.patient?.phone && appt.patient_id) {
+                        const patRes = await patientsApi.get(appt.patient_id);
+                        console.log("DEBUG: Fetched fresh patient data", patRes.data);
+                        if (patRes.data?.phone) {
+                            // Update appointment state with the phone number
+                            setAppointment((prev: any) => ({
+                                ...prev,
+                                patient: {
+                                    ...prev.patient,
+                                    phone: patRes.data.phone
+                                }
+                            }));
+                        }
+                    }
+
+                    if (!patientName || patientName === "Patient") {
+                        const nameRes = await namesApi.getPatientName(appt.patient_id);
+                        setPatientName(nameRes.data.full_name);
+                    }
+                } catch (err) {
+                    console.error("Error fetching patient details:", err);
+                }
 
                 // If backend provides vitals (new feature), use them
                 if (appt.vitals && appt.vitals.length > 0) {
@@ -499,10 +532,38 @@ const Consultation = () => {
                         <p className="text-sm text-muted-foreground mt-1 italic">"{appointment.description}"</p>
                     )}
                 </div>
-                <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${severityColors[severity]}`}>
-                    {severity.toUpperCase()}
+                <div className="flex items-center gap-3">
+                    {(user?.role === "doctor" || user?.role?.toLowerCase() === "doctor") && (
+                        <GlassButton
+                            size="sm"
+                            disabled={!appointment.patient?.phone}
+                            onClick={() => {
+                                if (!appointment.patient?.phone) return;
+                                // Trigger backend call
+                                agentApi.triggerCall({
+                                    phone_number: appointment.patient.phone,
+                                    appointment_id: appointment.id
+                                })
+                                    .then(() => toast({ title: "Call Initiated", description: "AI agent is calling the patient." }))
+                                    .catch(e => {
+                                        console.error("Backend call trigger failed:", e);
+                                        toast({ variant: "destructive", title: "Call Failed", description: "Could not trigger AI call." });
+                                    });
+                            }}
+                            className={`border-green-500/20 ${appointment.patient?.phone ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "opacity-50 cursor-not-allowed text-muted-foreground"}`}
+                        >
+                            <Phone className="w-4 h-4 mr-2" />
+                            {appointment.patient?.phone ? "Call Patient" : "No Phone"}
+                        </GlassButton>
+                    )}
+                    <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${severityColors[severity]}`}>
+                        {severity.toUpperCase()}
+                    </div>
                 </div>
             </div>
+
+
+
 
             {/* Tabs for Clinical / Care Team */}
             <div className="flex gap-4 border-b border-border/50 mb-6">
@@ -525,372 +586,374 @@ const Consultation = () => {
             </div>
 
             {/* Main Content Grid */}
-            {activeTab === 'clinical' ? (
-                <>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {
+                activeTab === 'clinical' ? (
+                    <>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                        {/* ═══ Left: Remarks + Voice ═══ */}
-                        <div className="lg:col-span-2 space-y-4">
-                            <GlassCard>
-                                <div className="p-5 space-y-4">
-                                    {/* Remarks Header with Voice Controls */}
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                                            <FileText className="w-4 h-4" />
-                                            Consultation Notes
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            {recorder.recording && (
-                                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 animate-pulse">
-                                                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                                                    <span className="text-xs text-red-400 font-medium">Recording</span>
-                                                    <Waves className="w-3 h-3 text-red-400" />
-                                                </div>
+                            {/* ═══ Left: Remarks + Voice ═══ */}
+                            <div className="lg:col-span-2 space-y-4">
+                                <GlassCard>
+                                    <div className="p-5 space-y-4">
+                                        {/* Remarks Header with Voice Controls */}
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                                                <FileText className="w-4 h-4" />
+                                                Consultation Notes
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                {recorder.recording && (
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 animate-pulse">
+                                                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                        <span className="text-xs text-red-400 font-medium">Recording</span>
+                                                        <Waves className="w-3 h-3 text-red-400" />
+                                                    </div>
+                                                )}
+                                                {transcribing && (
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
+                                                        <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
+                                                        <span className="text-xs text-blue-400 font-medium">Transcribing...</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Textarea with live transcription */}
+                                        <textarea
+                                            ref={remarksRef}
+                                            value={remarksText}
+                                            onChange={e => setRemarksText(e.target.value)}
+                                            placeholder="Type or use voice to record consultation notes...&#10;&#10;Click the 🎙️ microphone button to start voice recording. Transcription will appear after you stop recording."
+                                            rows={10}
+                                            className="w-full bg-background/60 border border-input rounded-xl px-4 py-3 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground leading-relaxed disabled:opacity-50"
+                                            disabled={transcribing}
+                                        />
+
+                                        {/* Voice Control Buttons */}
+                                        <div className="flex items-center gap-3">
+                                            {!recorder.recording ? (
+                                                <GlassButton
+                                                    onClick={recorder.start}
+                                                    disabled={transcribing}
+                                                    className="bg-gradient-to-r from-red-500/80 to-pink-500/80 hover:from-red-600 hover:to-pink-600 text-white"
+                                                >
+                                                    <Mic className="w-4 h-4 mr-2" />
+                                                    Start Voice Recording
+                                                </GlassButton>
+                                            ) : (
+                                                <GlassButton
+                                                    onClick={recorder.stop}
+                                                    className="bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                                                >
+                                                    <Square className="w-4 h-4 mr-2 fill-current" />
+                                                    Stop Recording
+                                                </GlassButton>
                                             )}
-                                            {transcribing && (
-                                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
-                                                    <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
-                                                    <span className="text-xs text-blue-400 font-medium">Transcribing...</span>
-                                                </div>
-                                            )}
+                                            <span className="text-xs text-muted-foreground">
+                                                {recorder.recording
+                                                    ? "Recording... Click Stop to transcribe."
+                                                    : transcribing
+                                                        ? "Processing audio..."
+                                                        : "Voice-to-text powered by MedASR"}
+                                            </span>
                                         </div>
                                     </div>
+                                </GlassCard>
+                            </div>
 
-                                    {/* Textarea with live transcription */}
-                                    <textarea
-                                        ref={remarksRef}
-                                        value={remarksText}
-                                        onChange={e => setRemarksText(e.target.value)}
-                                        placeholder="Type or use voice to record consultation notes...&#10;&#10;Click the 🎙️ microphone button to start voice recording. Transcription will appear after you stop recording."
-                                        rows={10}
-                                        className="w-full bg-background/60 border border-input rounded-xl px-4 py-3 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground leading-relaxed disabled:opacity-50"
-                                        disabled={transcribing}
-                                    />
+                            {/* ═══ Right: Severity + Follow-up ═══ */}
+                            <div className="space-y-4">
+                                <GlassCard>
+                                    <div className="p-5 space-y-4">
+                                        {/* Severity */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                <AlertTriangle className="w-4 h-4 inline mr-1.5" />
+                                                Severity
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {(["low", "medium", "high", "critical"] as const).map(s => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => setSeverity(s)}
+                                                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${severity === s
+                                                            ? severityColors[s] + " ring-1 ring-offset-1 ring-offset-background"
+                                                            : "border-border text-muted-foreground hover:border-foreground/30"
+                                                            } ${s === "low" ? "ring-green-500/50" : s === "medium" ? "ring-yellow-500/50" : s === "high" ? "ring-orange-500/50" : "ring-red-500/50"}`}
+                                                    >
+                                                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
 
-                                    {/* Voice Control Buttons */}
-                                    <div className="flex items-center gap-3">
-                                        {!recorder.recording ? (
-                                            <GlassButton
-                                                onClick={recorder.start}
-                                                disabled={transcribing}
-                                                className="bg-gradient-to-r from-red-500/80 to-pink-500/80 hover:from-red-600 hover:to-pink-600 text-white"
-                                            >
-                                                <Mic className="w-4 h-4 mr-2" />
-                                                Start Voice Recording
-                                            </GlassButton>
-                                        ) : (
-                                            <GlassButton
-                                                onClick={recorder.stop}
-                                                className="bg-red-600 hover:bg-red-700 text-white animate-pulse"
-                                            >
-                                                <Square className="w-4 h-4 mr-2 fill-current" />
-                                                Stop Recording
-                                            </GlassButton>
-                                        )}
-                                        <span className="text-xs text-muted-foreground">
-                                            {recorder.recording
-                                                ? "Recording... Click Stop to transcribe."
-                                                : transcribing
-                                                    ? "Processing audio..."
-                                                    : "Voice-to-text powered by MedASR"}
-                                        </span>
+                                        {/* Next Follow-up */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                <CalendarPlus className="w-4 h-4 inline mr-1.5" />
+                                                Next Follow-up
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={nextFollowup}
+                                                onChange={e => setNextFollowup(e.target.value)}
+                                                className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </GlassCard>
+                                </GlassCard>
+                            </div>
                         </div>
 
-                        {/* ═══ Right: Severity + Follow-up ═══ */}
-                        <div className="space-y-4">
+                        {/* ═══ Medicines & Lab Tests ═══ */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            {/* Medicines */}
                             <GlassCard>
-                                <div className="p-5 space-y-4">
-                                    {/* Severity */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
-                                            <AlertTriangle className="w-4 h-4 inline mr-1.5" />
-                                            Severity
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {(["low", "medium", "high", "critical"] as const).map(s => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => setSeverity(s)}
-                                                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${severity === s
-                                                        ? severityColors[s] + " ring-1 ring-offset-1 ring-offset-background"
-                                                        : "border-border text-muted-foreground hover:border-foreground/30"
-                                                        } ${s === "low" ? "ring-green-500/50" : s === "medium" ? "ring-yellow-500/50" : s === "high" ? "ring-orange-500/50" : "ring-red-500/50"}`}
-                                                >
-                                                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                <div className="p-5 space-y-3">
+                                    <label className="block text-sm font-medium text-foreground">
+                                        <Pill className="w-4 h-4 inline mr-1.5" />
+                                        Prescribed Medicines
+                                    </label>
 
-                                    {/* Next Follow-up */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
-                                            <CalendarPlus className="w-4 h-4 inline mr-1.5" />
-                                            Next Follow-up
-                                        </label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                                            <input
+                                                value={medSearch.query}
+                                                onChange={e => { medSearch.setQuery(e.target.value); setShowMedDropdown(true); }}
+                                                onFocus={() => setShowMedDropdown(true)}
+                                                placeholder="Search medicine..."
+                                                className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                            />
+                                            {medSearch.loading && <Loader2 className="absolute right-2.5 top-2.5 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+
+                                            {showMedDropdown && medSearch.results.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
+                                                    {medSearch.results.map((med: any) => (
+                                                        <button key={med.id} onClick={() => addMedicine(med)}
+                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between">
+                                                            <span>{med.name}</span>
+                                                            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                         <input
-                                            type="date"
-                                            value={nextFollowup}
-                                            onChange={e => setNextFollowup(e.target.value)}
-                                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                            value={pendingDosage}
+                                            onChange={e => setPendingDosage(e.target.value)}
+                                            placeholder="Dosage"
+                                            className="w-24 bg-background border border-input rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                         />
                                     </div>
+
+                                    {/* Medicine Pills */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {medicines.map(m => (
+                                            <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                <Pill className="w-3 h-3" />
+                                                {m.name}{m.dosage ? ` (${m.dosage})` : ""}
+                                                <button onClick={() => removeMedicine(m.id)} className="ml-0.5 hover:text-red-400 transition-colors">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                        {medicines.length === 0 && (
+                                            <p className="text-xs text-muted-foreground py-2">No medicines prescribed yet. Search above to add.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </GlassCard>
-                        </div>
-                    </div>
 
-                    {/* ═══ Medicines & Lab Tests ═══ */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        {/* Medicines */}
-                        <GlassCard>
-                            <div className="p-5 space-y-3">
-                                <label className="block text-sm font-medium text-foreground">
-                                    <Pill className="w-4 h-4 inline mr-1.5" />
-                                    Prescribed Medicines
-                                </label>
+                            {/* Lab Tests */}
+                            <GlassCard>
+                                <div className="p-5 space-y-3">
+                                    <label className="block text-sm font-medium text-foreground">
+                                        <FlaskConical className="w-4 h-4 inline mr-1.5" />
+                                        Ordered Lab Tests
+                                    </label>
 
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
+                                    <div className="relative">
                                         <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
                                         <input
-                                            value={medSearch.query}
-                                            onChange={e => { medSearch.setQuery(e.target.value); setShowMedDropdown(true); }}
-                                            onFocus={() => setShowMedDropdown(true)}
-                                            placeholder="Search medicine..."
+                                            value={labSearch.query}
+                                            onChange={e => { labSearch.setQuery(e.target.value); setShowLabDropdown(true); }}
+                                            onFocus={() => setShowLabDropdown(true)}
+                                            placeholder="Search lab test..."
                                             className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                         />
-                                        {medSearch.loading && <Loader2 className="absolute right-2.5 top-2.5 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                                        {labSearch.loading && <Loader2 className="absolute right-2.5 top-2.5 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
 
-                                        {showMedDropdown && medSearch.results.length > 0 && (
+                                        {showLabDropdown && labSearch.results.length > 0 && (
                                             <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
-                                                {medSearch.results.map((med: any) => (
-                                                    <button key={med.id} onClick={() => addMedicine(med)}
+                                                {labSearch.results.map((lab: any) => (
+                                                    <button key={lab.id} onClick={() => addLab(lab)}
                                                         className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between">
-                                                        <span>{med.name}</span>
+                                                        <span>{lab.name}</span>
                                                         <Plus className="w-3.5 h-3.5 text-muted-foreground" />
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <input
-                                        value={pendingDosage}
-                                        onChange={e => setPendingDosage(e.target.value)}
-                                        placeholder="Dosage"
-                                        className="w-24 bg-background border border-input rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                    />
-                                </div>
 
-                                {/* Medicine Pills */}
-                                <div className="flex flex-wrap gap-1.5">
-                                    {medicines.map(m => (
-                                        <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                            <Pill className="w-3 h-3" />
-                                            {m.name}{m.dosage ? ` (${m.dosage})` : ""}
-                                            <button onClick={() => removeMedicine(m.id)} className="ml-0.5 hover:text-red-400 transition-colors">
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </span>
-                                    ))}
-                                    {medicines.length === 0 && (
-                                        <p className="text-xs text-muted-foreground py-2">No medicines prescribed yet. Search above to add.</p>
-                                    )}
-                                </div>
-                            </div>
-                        </GlassCard>
-
-                        {/* Lab Tests */}
-                        <GlassCard>
-                            <div className="p-5 space-y-3">
-                                <label className="block text-sm font-medium text-foreground">
-                                    <FlaskConical className="w-4 h-4 inline mr-1.5" />
-                                    Ordered Lab Tests
-                                </label>
-
-                                <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
-                                    <input
-                                        value={labSearch.query}
-                                        onChange={e => { labSearch.setQuery(e.target.value); setShowLabDropdown(true); }}
-                                        onFocus={() => setShowLabDropdown(true)}
-                                        placeholder="Search lab test..."
-                                        className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                    />
-                                    {labSearch.loading && <Loader2 className="absolute right-2.5 top-2.5 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-
-                                    {showLabDropdown && labSearch.results.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
-                                            {labSearch.results.map((lab: any) => (
-                                                <button key={lab.id} onClick={() => addLab(lab)}
-                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between">
-                                                    <span>{lab.name}</span>
-                                                    <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                                    {/* Lab Pills */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {labs.map(l => (
+                                            <span key={l.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                <FlaskConical className="w-3 h-3" />
+                                                {l.name}
+                                                <button onClick={() => removeLab(l.id)} className="ml-0.5 hover:text-red-400 transition-colors">
+                                                    <X className="w-3 h-3" />
                                                 </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Lab Pills */}
-                                <div className="flex flex-wrap gap-1.5">
-                                    {labs.map(l => (
-                                        <span key={l.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                            <FlaskConical className="w-3 h-3" />
-                                            {l.name}
-                                            <button onClick={() => removeLab(l.id)} className="ml-0.5 hover:text-red-400 transition-colors">
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </span>
-                                    ))}
-                                    {labs.length === 0 && (
-                                        <p className="text-xs text-muted-foreground py-2">No lab tests ordered yet. Search above to add.</p>
-                                    )}
-                                </div>
-                            </div>
-                        </GlassCard>
-                    </div>
-                </>
-            ) : (
-                /* ═══ Care Team & Vitals ═══ */
-                <div className="space-y-6">
-                    <GlassCard>
-                        <div className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <Stethoscope className="w-5 h-5 text-primary" />
-                                Nurse Assignment
-                            </h3>
-                            <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
-                                <label className="text-sm font-medium text-muted-foreground mb-2 block">Assigned Nurse</label>
-                                {assignedNurse ? (
-                                    <div className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                                                {assignedNurse.name?.[0]}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-foreground">{assignedNurse.name}</p>
-                                                <p className="text-xs text-muted-foreground">ID: {assignedNurse.id}</p>
-                                            </div>
-                                        </div>
-                                        <GlassButton size="sm" variant="ghost" className="text-destructive h-8 px-2" onClick={() => setAssignedNurse(null)}>
-                                            <X className="w-4 h-4" />
-                                        </GlassButton>
+                                            </span>
+                                        ))}
+                                        {labs.length === 0 && (
+                                            <p className="text-xs text-muted-foreground py-2">No lab tests ordered yet. Search above to add.</p>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <div className="flex gap-2">
-                                            <input
-                                                value={nurseQuery}
-                                                onChange={(e) => setNurseQuery(e.target.value)}
-                                                placeholder="Search by name..."
-                                                className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                                onKeyDown={(e) => e.key === "Enter" && handleNurseSearch()}
-                                            />
-                                            <GlassButton onClick={handleNurseSearch} disabled={loadingNurses}>
-                                                {loadingNurses ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
+                                </div>
+                            </GlassCard>
+                        </div>
+                    </>
+                ) : (
+                    /* ═══ Care Team & Vitals ═══ */
+                    <div className="space-y-6">
+                        <GlassCard>
+                            <div className="p-6">
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                    <Stethoscope className="w-5 h-5 text-primary" />
+                                    Nurse Assignment
+                                </h3>
+                                <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Assigned Nurse</label>
+                                    {assignedNurse ? (
+                                        <div className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                                                    {assignedNurse.name?.[0]}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-foreground">{assignedNurse.name}</p>
+                                                    <p className="text-xs text-muted-foreground">ID: {assignedNurse.id}</p>
+                                                </div>
+                                            </div>
+                                            <GlassButton size="sm" variant="ghost" className="text-destructive h-8 px-2" onClick={() => setAssignedNurse(null)}>
+                                                <X className="w-4 h-4" />
                                             </GlassButton>
                                         </div>
-                                        {nurses.length > 0 && (
-                                            <div className="border border-border rounded-lg overflow-hidden">
-                                                {nurses.map((nurse) => (
-                                                    <div key={nurse.id} className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors border-b border-border/50 last:border-0">
-                                                        <div>
-                                                            <p className="text-sm font-medium">{nurse.full_name}</p>
-                                                            <p className="text-xs text-muted-foreground">{nurse.email}</p>
-                                                        </div>
-                                                        <GlassButton size="sm" variant="ghost" onClick={() => assignNurse(nurse)}>
-                                                            Assign
-                                                        </GlassButton>
-                                                    </div>
-                                                ))}
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    value={nurseQuery}
+                                                    onChange={(e) => setNurseQuery(e.target.value)}
+                                                    placeholder="Search by name..."
+                                                    className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    onKeyDown={(e) => e.key === "Enter" && handleNurseSearch()}
+                                                />
+                                                <GlassButton onClick={handleNurseSearch} disabled={loadingNurses}>
+                                                    {loadingNurses ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
+                                                </GlassButton>
                                             </div>
-                                        )}
-                                        {nurses.length === 0 && nurseQuery && !loadingNurses && (
-                                            <p className="text-sm text-muted-foreground text-center py-2">No nurses found.</p>
-                                        )}
+                                            {nurses.length > 0 && (
+                                                <div className="border border-border rounded-lg overflow-hidden">
+                                                    {nurses.map((nurse) => (
+                                                        <div key={nurse.id} className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors border-b border-border/50 last:border-0">
+                                                            <div>
+                                                                <p className="text-sm font-medium">{nurse.full_name}</p>
+                                                                <p className="text-xs text-muted-foreground">{nurse.email}</p>
+                                                            </div>
+                                                            <GlassButton size="sm" variant="ghost" onClick={() => assignNurse(nurse)}>
+                                                                Assign
+                                                            </GlassButton>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {nurses.length === 0 && nurseQuery && !loadingNurses && (
+                                                <p className="text-sm text-muted-foreground text-center py-2">No nurses found.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </GlassCard>
+
+                        {/* Vitals History Section */}
+                        <GlassCard>
+                            <div className="p-6">
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-primary" />
+                                    Vitals History
+                                </h3>
+
+                                {vitals.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {vitals.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((v: any, i: number) => (
+                                            <div key={i} className="p-4 rounded-xl bg-secondary/20 border border-border/30">
+                                                <div className="flex items-center justify-between mb-3 border-b border-border/30 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                                                        <span className="text-sm font-medium">
+                                                            {new Date(v.created_at).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-xs bg-secondary px-2 py-1 rounded text-muted-foreground">
+                                                        Recorded by: {v.nurse?.full_name || v.nurse_name || "Nurse"}
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Heart className="w-4 h-4 text-red-500" />
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">BP</p>
+                                                            <p className="font-semibold">{v.bp || "--"}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Activity className="w-4 h-4 text-blue-500" />
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Pulse</p>
+                                                            <p className="font-semibold">{v.pulse || "--"} bpm</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Thermometer className="w-4 h-4 text-orange-500" />
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Temp</p>
+                                                            <p className="font-semibold">{v.temp || "--"}°F</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Wind className="w-4 h-4 text-cyan-500" />
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">SpO2</p>
+                                                            <p className="font-semibold">{v.spo2 || "--"}%</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {v.remarks && (
+                                                    <div className="mt-3 text-sm text-muted-foreground italic">
+                                                        "{v.remarks}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border/30 rounded-xl">
+                                        <Activity className="w-8 h-8 opacity-20 mx-auto mb-2" />
+                                        <p>No vitals recorded yet.</p>
+                                        <p className="text-xs opacity-60">Assign a nurse to record vitals.</p>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    </GlassCard>
-
-                    {/* Vitals History Section */}
-                    <GlassCard>
-                        <div className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-primary" />
-                                Vitals History
-                            </h3>
-
-                            {vitals.length > 0 ? (
-                                <div className="space-y-4">
-                                    {vitals.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((v: any, i: number) => (
-                                        <div key={i} className="p-4 rounded-xl bg-secondary/20 border border-border/30">
-                                            <div className="flex items-center justify-between mb-3 border-b border-border/30 pb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                                                    <span className="text-sm font-medium">
-                                                        {new Date(v.created_at).toLocaleString()}
-                                                    </span>
-                                                </div>
-                                                <span className="text-xs bg-secondary px-2 py-1 rounded text-muted-foreground">
-                                                    Recorded by: {v.nurse?.full_name || v.nurse_name || "Nurse"}
-                                                </span>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Heart className="w-4 h-4 text-red-500" />
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground">BP</p>
-                                                        <p className="font-semibold">{v.bp || "--"}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Activity className="w-4 h-4 text-blue-500" />
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground">Pulse</p>
-                                                        <p className="font-semibold">{v.pulse || "--"} bpm</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Thermometer className="w-4 h-4 text-orange-500" />
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground">Temp</p>
-                                                        <p className="font-semibold">{v.temp || "--"}°F</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Wind className="w-4 h-4 text-cyan-500" />
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground">SpO2</p>
-                                                        <p className="font-semibold">{v.spo2 || "--"}%</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {v.remarks && (
-                                                <div className="mt-3 text-sm text-muted-foreground italic">
-                                                    "{v.remarks}"
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border/30 rounded-xl">
-                                    <Activity className="w-8 h-8 opacity-20 mx-auto mb-2" />
-                                    <p>No vitals recorded yet.</p>
-                                    <p className="text-xs opacity-60">Assign a nurse to record vitals.</p>
-                                </div>
-                            )}
-                        </div>
-                    </GlassCard>
-                </div>
-            )}
+                        </GlassCard>
+                    </div>
+                )
+            }
 
             {/* ═══ Action Bar ═══ */}
             <div className="flex gap-4 pb-8 flex-wrap justify-end">
@@ -925,7 +988,7 @@ const Consultation = () => {
                     )}
                 </GlassButton>
             </div>
-        </div>
+        </div >
     );
 };
 

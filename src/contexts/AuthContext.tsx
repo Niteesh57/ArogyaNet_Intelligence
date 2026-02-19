@@ -23,6 +23,7 @@ interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   fetchUser: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -69,8 +70,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
 
+  const updateProfile = async (data: Partial<User>) => {
+    // Optimistic update or just re-fetch
+    await fetchUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, fetchUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, fetchUser, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

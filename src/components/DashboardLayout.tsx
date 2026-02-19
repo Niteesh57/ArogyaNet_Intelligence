@@ -72,10 +72,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {/* User + Logout */}
       <div className="p-4 border-t border-sidebar-border/50">
         {!collapsed && user && (
-          <div className="mb-4 px-2">
+          <Link to="/profile" className="mb-4 px-2 block hover:bg-sidebar-accent/50 rounded-md py-1 transition-colors">
             <p className="text-sm font-medium truncate">{user.full_name || user.email}</p>
             <p className="text-xs text-muted-foreground capitalize">{user.role?.replace("_", " ")}</p>
-          </div>
+          </Link>
         )}
         <button
           onClick={logout}

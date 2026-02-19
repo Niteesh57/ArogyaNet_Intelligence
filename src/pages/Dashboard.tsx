@@ -1,10 +1,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { adminApi, appointmentsApi, namesApi, doctorsApi, patientsApi, usersApi } from "@/lib/api";
+import { adminApi, appointmentsApi, namesApi, doctorsApi, patientsApi, usersApi, agentApi } from "@/lib/api";
 import {
   Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot
+  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot, Phone
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -653,6 +653,9 @@ const DoctorDayPanel = ({ selectedDate, todayStr, selectedAppts, nameCache, onCo
 const DoctorDashboard = ({ user }: { user: any }) => {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [myPatients, setMyPatients] = useState<any[]>([]);
+  const [todayFollowups, setTodayFollowups] = useState<any[]>([]);
+  const [followupModal, setFollowupModal] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [nameCache, setNameCache] = useState<Record<string, string>>({});
 
@@ -682,6 +685,13 @@ const DoctorDashboard = ({ user }: { user: any }) => {
         const patRes = await doctorsApi.getMyPatients();
         setMyPatients(patRes.data || []);
       } catch { }
+
+      try {
+        const fuRes = await doctorsApi.getFollowupsToday();
+        setTodayFollowups(fuRes.data || []);
+      } catch { }
+
+
 
       const uniquePatientIds = [...new Set(myAppts.map((a: any) => a.patient_id))] as string[];
       uniquePatientIds.forEach(async (pid) => {
@@ -729,7 +739,7 @@ const DoctorDashboard = ({ user }: { user: any }) => {
       <DateHeader name={user?.full_name} />
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
         <GlassCard>
           <div className="p-6 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -765,6 +775,19 @@ const DoctorDashboard = ({ user }: { user: any }) => {
               <h3 className="text-lg font-medium text-muted-foreground">Today's Patients</h3>
               <div className="text-4xl font-bold mt-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
                 <AnimatedCounter target={new Set(todayAppts.map(a => a.patient_id)).size} />
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard onClick={() => setFollowupModal(true)} className="cursor-pointer hover:border-primary/50 transition-colors">
+          <div className="p-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Clock className="w-24 h-24 text-orange-500" />
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-lg font-medium text-muted-foreground">Follow-ups Due</h3>
+              <div className="text-4xl font-bold mt-2 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-amber-500">
+                <AnimatedCounter target={todayFollowups.length} />
               </div>
             </div>
           </div>
@@ -897,6 +920,40 @@ const DoctorDashboard = ({ user }: { user: any }) => {
           )}
         </div>
       )}
+      <GlassModal open={followupModal} onClose={() => setFollowupModal(false)} title="Today's Follow-ups" className="max-w-2xl">
+        <div className="max-h-[60vh] overflow-y-auto space-y-2 p-2">
+          {todayFollowups.length > 0 ? todayFollowups.map((apt: any) => (
+            <div key={apt.id} className="p-3 border border-border/50 rounded-lg bg-background/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <p className="font-medium">{apt.patient?.full_name || "Unknown Patient"}</p>
+                <p className="text-xs text-muted-foreground">Original Date: {apt.date}</p>
+                <p className="text-sm mt-1">{apt.description}</p>
+              </div>
+              <GlassButton size="sm"
+                onClick={async () => {
+                  if (apt.patient?.phone) {
+                    // Fallback to tel link if API fails or for immediate action
+                    window.location.href = `tel:${apt.patient.phone}`;
+
+                    // Trigger backend API for call logging/automations
+                    try {
+                      await agentApi.triggerCall({ phone_number: apt.patient.phone, appointment_id: apt.id });
+                      toast({ title: "Call Initiated", description: `Calling ${apt.patient.full_name}...` });
+                    } catch (e) {
+                      console.error("Failed to trigger backend call:", e);
+                      // Don't show error toast since tel link usually works as fallback
+                    }
+                  }
+                }}
+                disabled={!apt.patient?.phone}
+                className={`border-green-500/20 ${apt.patient?.phone ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "opacity-50 cursor-not-allowed text-muted-foreground"}`}
+              >
+                <Phone className="w-4 h-4 mr-2" /> {apt.patient?.phone ? "Call" : "No Phone"}
+              </GlassButton>
+            </div>
+          )) : <p className="text-center text-muted-foreground py-8">No follow-ups scheduled for today.</p>}
+        </div>
+      </GlassModal>
     </div>
   );
 };

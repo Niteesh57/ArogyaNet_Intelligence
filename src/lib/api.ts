@@ -77,6 +77,7 @@ export const doctorsApi = {
   getSlots: (id: string, date: string) => api.get(`/doctors/${id}/slots?date=${date}`),
   getMyPatients: (skip = 0, limit = 100) => api.get(`/doctors/me/patients?skip=${skip}&limit=${limit}`),
   searchInHospital: (hospitalId: string, q: string) => api.get(`/doctors/hospital/${hospitalId}/search?q=${q}`),
+  getFollowupsToday: () => api.get("/doctors/me/followups/today"),
 };
 
 // Nurses
@@ -99,6 +100,8 @@ export const nursesApi = {
   update: (id: string, data: any) => api.put(`/nurses/${id}`, data),
   delete: (id: string) => api.delete(`/nurses/${id}`),
 };
+
+
 
 // Patients
 export const patientsApi = {
@@ -188,6 +191,8 @@ export const voiceApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+  triggerCall: (phoneNumber: string, appointmentId?: string) =>
+    api.post("/voice/trigger-call", { phone_number: phoneNumber, appointment_id: appointmentId }),
 };
 
 // Documents
@@ -212,6 +217,7 @@ export const agentApi = {
   analyze: (data: { document_url: string; question: string; appointment_id?: string }) =>
     api.post("/agent/analyze", data),
   getChatHistory: (appointmentId: string) => api.get(`/agent/appointments/${appointmentId}/chat`),
+  triggerCall: (data: { phone_number: string; appointment_id?: string }) => api.post("/agent/trigger-call", data),
 };
 
 export const appointmentsApi = {
@@ -254,6 +260,7 @@ export const usersApi = {
     });
   },
   searchNurses: (q: string) => api.get(`/users/search/nurses?q=${q}`),
+  updateMe: (data: any) => api.put("/users/me", data),
 };
 
 

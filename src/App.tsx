@@ -23,6 +23,7 @@ import Consultation from "./pages/Consultation";
 import Documents from "./pages/Documents";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+            <Route path="/profile" element={<ProtectedPage><Profile /></ProtectedPage>} />
             <Route path="/doctors" element={<ProtectedPage><Doctors /></ProtectedPage>} />
             <Route path="/nurses" element={<ProtectedPage><Nurses /></ProtectedPage>} />
             <Route path="/patients" element={<ProtectedPage><Patients /></ProtectedPage>} />
