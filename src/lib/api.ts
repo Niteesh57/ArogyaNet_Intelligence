@@ -218,6 +218,7 @@ export const agentApi = {
     api.post("/agent/analyze", data),
   getChatHistory: (appointmentId: string) => api.get(`/agent/appointments/${appointmentId}/chat`),
   triggerCall: (data: { phone_number: string; appointment_id?: string }) => api.post("/agent/trigger-call", data),
+  expertCheck: (data: { check_text: string; category: string; hospital_id?: string; medication?: string[]; lab_test?: string[] }) => api.post("/agent/expert-check", data),
 };
 
 export const appointmentsApi = {

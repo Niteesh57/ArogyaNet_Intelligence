@@ -3,11 +3,12 @@ import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Building2, CalendarClock, LogOut, Menu, X, ChevronLeft, Calendar, FileText, File as FileIcon, UserCheck, Bot
+  Building2, CalendarClock, LogOut, Menu, X, ChevronLeft, Calendar, FileText, File as FileIcon, UserCheck, Bot, GraduationCap
 } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ["super_admin", "hospital_admin", "doctor", "nurse", "patient"] },
+  { title: "Expert Learn", path: "/expert-learn", icon: GraduationCap, roles: ["doctor", "nurse"] },
   { title: "Doctors", path: "/doctors", icon: Stethoscope, roles: ["super_admin", "hospital_admin"] },
   { title: "Nurses", path: "/nurses", icon: HeartPulse, roles: ["super_admin", "hospital_admin"] },
   { title: "Patients", path: "/patients", icon: Users, roles: ["super_admin", "hospital_admin", "doctor", "nurse"] },
@@ -38,13 +39,13 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border/50">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-sidebar-primary flex items-center justify-center shadow-md">
-            <span className="text-sidebar-primary-foreground font-bold text-sm">LH</span>
+          <div className="w-8 h-8 rounded-md bg-transparent flex items-center justify-center">
+            <img src="/icon.png" alt="ArogyaNet Logo" className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-semibold text-sm leading-none tracking-tight">LIFE HEALTH</span>
-              <span className="text-[10px] text-muted-foreground uppercase opacity-80">Secure CRM</span>
+              <span className="font-semibold text-sm leading-none tracking-tight">ArogyaNet AI</span>
+              <span className="text-[10px] text-muted-foreground uppercase opacity-80">Federated Clinical Intelligence</span>
             </div>
           )}
         </Link>
@@ -98,7 +99,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground p-1 hover:bg-sidebar-accent rounded-md">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <span className="font-semibold text-sidebar-foreground">Life Health CRM</span>
+          <span className="font-semibold text-sidebar-foreground">ArogyaNet AI</span>
         </div>
       </div>
 

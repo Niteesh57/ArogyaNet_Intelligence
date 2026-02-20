@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { appointmentsApi, inventoryApi, labTestsApi, namesApi, voiceApi, usersApi, patientsApi } from "@/lib/api";
-import { GlassButton, GlassCard } from "@/components/GlassUI";
+import { GlassButton, GlassCard, GlassModal } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
 import {
     Pill, FlaskConical, X, Search, Loader2, FileText,
     AlertTriangle, CalendarPlus, Send, ArrowLeft,
     Mic, MicOff, Square, Stethoscope, Plus, Waves, Check,
-    Activity, Heart, Calendar, Thermometer, Wind, Phone, RefreshCw, MessageSquare, Bot, User
+    Activity, Heart, Calendar, Thermometer, Wind, Phone, RefreshCw, MessageSquare, Bot, User, Share2
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { agentApi } from "@/lib/api";
@@ -452,11 +452,66 @@ const Consultation = () => {
     const removeLab = (labId: string) => setLabs(prev => prev.filter(l => l.id !== labId));
 
     // Submit
+
+
+    /* ─── Experience Sharing Logic ─── */
+    const [showExperienceModal, setShowExperienceModal] = useState(false);
+    const [experienceText, setExperienceText] = useState("");
+    const [experienceCategory, setExperienceCategory] = useState("General");
+    const [isSharing, setIsSharing] = useState(false);
+
+    const handleConstraintSubmit = () => {
+        // Just proceed to finish without sharing
+        setShowExperienceModal(false);
+        finishConsultation();
+    };
+
+    const handleExperienceSubmit = async () => {
+        if (!experienceText.trim()) {
+            toast({ title: "Please enter your experience", variant: "destructive" });
+            return;
+        }
+
+        setIsSharing(true);
+        try {
+            await agentApi.expertCheck({
+                check_text: experienceText,
+                category: experienceCategory,
+                hospital_id: user?.hospital_id, // Fallback handled in backend if missing
+                medication: medicines.map(m => m.name),
+                lab_test: labs.map(l => l.name)
+            });
+            toast({ title: "Experience Shared!", description: "Your insights help train our AI." });
+        } catch (e) {
+            console.error("Failed to share experience", e);
+            toast({ title: "Could not share experience", description: "Proceeding to finish consultation...", variant: "destructive" });
+        } finally {
+            setIsSharing(false);
+            setShowExperienceModal(false);
+            finishConsultation();
+        }
+    };
+
+
     const handleSubmit = async (targetStatus: string = "finished") => {
         if (!remarksText.trim() && medicines.length === 0 && labs.length === 0) {
             toast({ title: "Add at least a remark, medicine, or lab test", variant: "destructive" });
             return;
         }
+
+        // Intercept "finished" status to ask for experience
+        if (targetStatus === "finished" && user?.role === "doctor") {
+            setShowExperienceModal(true);
+            return;
+        }
+
+        // Otherwise proceed directly (e.g. draft)
+        await saveConsultation(targetStatus);
+    };
+
+    const finishConsultation = () => saveConsultation("finished");
+
+    const saveConsultation = async (targetStatus: string) => {
         setSubmitting(true);
         try {
             const remarksPayload = {
@@ -988,7 +1043,100 @@ const Consultation = () => {
                     )}
                 </GlassButton>
             </div>
-        </div >
+
+            {/* Experience Sharing Modal */}
+            <GlassModal
+                open={showExperienceModal}
+                onClose={() => setShowExperienceModal(false)}
+                title="Share Your Experience"
+                className="max-w-xl"
+            >
+                <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3">
+                        <Bot className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                        <div>
+                            <h3 className="font-semibold text-foreground">Help Train MedVQA</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Your insights are valuable! Sharing your clinical reasoning helps improve doctor treatment evaluation based on user experiences and our AI's diagnostic accuracy.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Auto-populated Data Display */}
+                    <div className="bg-secondary/30 p-3 rounded-lg border border-border/50">
+                        <p className="text-xs font-medium text-foreground mb-2 uppercase tracking-wider">Auto-populated Context</p>
+                        <div className="space-y-2">
+                            <div className="flex items-start gap-2 text-sm">
+                                <Pill className="w-4 h-4 text-blue-400 mt-0.5" />
+                                <div>
+                                    <span className="text-muted-foreground">Medicines: </span>
+                                    <span className="text-foreground">{medicines.length > 0 ? medicines.map(m => m.name).join(", ") : "None"}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2 text-sm">
+                                <FlaskConical className="w-4 h-4 text-emerald-400 mt-0.5" />
+                                <div>
+                                    <span className="text-muted-foreground">Lab Tests: </span>
+                                    <span className="text-foreground">{labs.length > 0 ? labs.map(l => l.name).join(", ") : "None"}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1.5">Category</label>
+                            <select
+                                value={experienceCategory}
+                                onChange={(e) => setExperienceCategory(e.target.value)}
+                                className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="General">General Practice</option>
+                                <option value="Cardiology">Cardiology</option>
+                                <option value="Dermatology">Dermatology</option>
+                                <option value="Pediatrics">Pediatrics</option>
+                                <option value="Neurology">Neurology</option>
+                                <option value="Orthopedics">Orthopedics</option>
+                                <option value="Internal Medicine">Internal Medicine</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Clinical Experience & Treatment Plan</label>
+                        <textarea
+                            value={experienceText}
+                            onChange={(e) => setExperienceText(e.target.value)}
+                            placeholder="Describe your diagnosis, reasoning, and the treatment plan..."
+                            rows={4}
+                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <GlassButton
+                            variant="ghost"
+                            onClick={handleConstraintSubmit}
+                            className="flex-1"
+                        >
+                            Skip & Finish
+                        </GlassButton>
+                        <GlassButton
+                            onClick={handleExperienceSubmit}
+                            disabled={isSharing}
+                            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-lg shadow-blue-500/20"
+                        >
+                            {isSharing ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sharing...</>
+                            ) : (
+                                <><Share2 className="w-4 h-4 mr-2" /> Share & Finish</>
+                            )}
+                        </GlassButton>
+                    </div>
+                </div>
+            </GlassModal>
+        </div>
+
     );
 };
 

@@ -268,6 +268,47 @@ const HospitalRegisterForm = () => {
   );
 };
 
+const Slideshow = () => {
+  const images = ["/nav/1.jpeg", "/nav/2.png", "/nav/3.png"];
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-black/90">
+      {images.map((src, index) => (
+        <div
+          key={src}
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === current ? "opacity-60" : "opacity-0"
+            }`}
+        >
+          <img src={src} alt="Slide" className="w-full h-full object-cover" />
+        </div>
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-12 text-white">
+        <h2 className="text-4xl font-bold mb-4 font-serif">Federated Clinical Intelligence</h2>
+        <p className="text-lg opacity-90 max-w-xl">
+          Empowering healthcare professionals with decentralized, privacy-preserving AI for smarter diagnostics and patient care.
+        </p>
+        <div className="flex gap-2 mt-6">
+          {images.map((_, idx) => (
+            <div
+              key={idx}
+              className={`h-1 rounded-full transition-all duration-300 ${idx === current ? "w-8 bg-white" : "w-2 bg-white/40"
+                }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState<"signin" | "signup" | "hospital">("signin");
   const { user } = useAuth();
@@ -279,52 +320,45 @@ const Index = () => {
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* Branding Section */}
-      <div className="hidden lg:flex flex-col justify-between p-10 bg-sidebar text-sidebar-foreground border-r border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-lg">LH</div>
-          <span className="text-xl font-bold tracking-tight">Life Health CRM</span>
+      {/* Auth Section (Left) */}
+      <div className="flex flex-col justify-center p-6 lg:p-12 bg-background relative">
+        <div className="absolute top-8 left-8 flex items-center gap-2">
+          <img src="/icon.png" alt="Logo" className="w-8 h-8 object-contain" />
+          <span className="font-bold text-lg tracking-tight">ArogyaNet AI</span>
         </div>
-        <div className="space-y-6 max-w-lg">
-          <h2 className="text-4xl font-bold tracking-tighter leading-tight">
-            Secure, Intelligent <br /> Patient Management.
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Streamline your hospital operations with our production-grade CRM.
-            Trusted by professionals for reliability and compliance.
-          </p>
-          <div className="flex gap-4 pt-4">
-            <div className="flex-1 p-4 rounded-lg bg-sidebar-accent border border-sidebar-border">
-              <div className="text-2xl font-bold mb-1">99.9%</div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">Uptime</div>
-            </div>
-            <div className="flex-1 p-4 rounded-lg bg-sidebar-accent border border-sidebar-border">
-              <div className="text-2xl font-bold mb-1">ISO</div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">Certified</div>
-            </div>
-          </div>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Life Health Systems. All rights reserved.
-        </div>
-      </div>
 
-      {/* Auth Section */}
-      <div className="flex flex-col items-center justify-center p-6 lg:p-12 bg-background">
-        <div className="w-full max-w-lg space-y-8">
-          <div className="flex justify-center border-b border-border w-full mb-8">
+        <div className="w-full max-w-sm mx-auto space-y-8 animate-fade-in">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {activeTab === "signin" ? "Welcome back" : activeTab === "signup" ? "Create an account" : "Partner with us"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "signin" ? "Enter your credentials to access the secure portal." : "Join the network of next-gen healthcare providers."}
+            </p>
+          </div>
+
+          <div className="flex p-1 bg-muted/50 rounded-lg">
             {(["signin", "signup", "hospital"] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`flex-1 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === tab ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                {tab === "signin" ? "Sign In" : tab === "signup" ? "Create Account" : "Hospital"}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                {tab === "signin" ? "Sign In" : tab === "signup" ? "Sign Up" : "Hospital"}
               </button>
             ))}
           </div>
 
-          <div className="animate-fade-up">
+          <div className="pt-2">
             {activeTab === "signin" ? <SignInForm /> : activeTab === "signup" ? <SignUpForm onSuccess={() => setActiveTab("signin")} /> : <HospitalRegisterForm />}
           </div>
         </div>
+
+        <div className="absolute bottom-6 left-0 right-0 text-center text-[10px] text-muted-foreground">
+          &copy; {new Date().getFullYear()} ArogyaNet AI Systems. Secured by Life Health.
+        </div>
+      </div>
+
+      {/* Slideshow Section (Right) */}
+      <div className="hidden lg:block h-screen sticky top-0">
+        <Slideshow />
       </div>
     </div>
   );

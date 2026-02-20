@@ -28,6 +28,7 @@ import Profile from "./pages/Profile";
 
 const DeepResearch = lazy(() => import("./pages/DeepResearch"));
 const Events = lazy(() => import("./pages/Events"));
+const ExpertLearn = lazy(() => import("./pages/ExpertLearn"));
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
 
               {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+              <Route path="/expert-learn" element={<ProtectedPage><ExpertLearn /></ProtectedPage>} />
               <Route path="/profile" element={<ProtectedPage><Profile /></ProtectedPage>} />
               <Route path="/appointments" element={<ProtectedPage><Appointments /></ProtectedPage>} />
               <Route path="/patients" element={<ProtectedPage><Patients /></ProtectedPage>} />
