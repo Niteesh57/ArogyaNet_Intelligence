@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "https://arogyanetai-production.up.railway.app",
         changeOrigin: true,
         secure: false,
         ws: true,

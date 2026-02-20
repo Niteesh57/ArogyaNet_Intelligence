@@ -64,7 +64,7 @@ export default function DeepResearch() {
         const token = localStorage.getItem('lh_token');
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/agent/deep-research`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/agent/deep-research`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

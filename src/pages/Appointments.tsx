@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { appointmentsApi, searchApi, agentApi, namesApi, doctorsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, GlassTable, GlassButton, GlassModal, GlassInput, GlassSelect, SearchBar, Shimmer } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Sparkles, X, Clock, Stethoscope, Bot } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, X, Clock, Stethoscope, Bot, Utensils } from "lucide-react";
 import { GeminiLoadingModal } from "@/components/GeminiAnimation";
 import { AppointmentChatModal } from "@/components/AppointmentChatModal";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Appointment {
     id: string;
@@ -20,6 +22,7 @@ interface Appointment {
     remarks?: { text?: string; lab?: string[]; medicine?: string[] };
     next_followup?: string;
     lab_report_id?: string;
+    diet_plan?: string;
     created_at: string;
     updated_at: string;
 }
@@ -404,89 +407,108 @@ const Appointments = () => {
                                 </h3>
                                 <GlassTable headers={["Slot", "Patient", "Doctor", "Description", "Status", "Severity", "Actions"]}>
                                     {appts.map((a) => (
-                                        <tr key={a.id} className="hover:bg-background/20 transition-colors">
-                                            {/* Removed Date Column as it is grouped */}
-                                            <td className="px-4 py-3 text-sm text-foreground font-medium">{a.slot}</td>
-                                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`patient_${a.patient_id}`] || 'Loading...'}</td>
-                                            <td className="px-4 py-3 text-sm text-foreground">{nameCache[`doctor_${a.doctor_id}`] || 'Loading...'}</td>
-                                            <td className="px-4 py-3 text-sm text-foreground max-w-[250px] truncate" title={a.description}>{a.description}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <select
-                                                    value={a.status || "started"}
-                                                    onChange={(e) => updateStatus(a.id, e.target.value)}
-                                                    className={`text-xs font-medium rounded-md border-0 bg-transparent py-1 pl-0 pr-6 focus:ring-0 ${getStatusColor(a.status || 'started').replace('bg-', 'text-')}`}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <option value="started">Started</option>
-                                                    <option value="in_progress">In Progress</option>
-                                                    <option value="finished">Finished</option>
-                                                    <option value="admitted">Admitted</option>
-                                                </select>
-                                            </td>
-                                            <td className={`px-4 py-3 text-sm font-medium capitalize ${getSeverityColor(a.severity)}`}>
-                                                {a.severity}
-                                            </td>
-                                            <td className="px-4 py-3 flex gap-2">
-                                                <button
-                                                    onClick={() => navigate(`/consultation/${a.id}`)}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
-                                                    title={a.remarks ? "Update Consultation" : "Record Consultation"}
-                                                >
-                                                    <Stethoscope className="w-3.5 h-3.5" />
-                                                    {a.remarks ? "Update" : "Record"}
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setChatAppointment({
-                                                            id: a.id,
-                                                            patientName: nameCache[`patient_${a.patient_id}`] || 'Patient'
-                                                        });
-                                                        setChatModal(true);
-                                                    }}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
-                                                    title="DocuMate Chat"
-                                                >
-                                                    <Bot className="w-3.5 h-3.5" />
-                                                    DocuMate
-                                                </button>
-                                                {isAdmin && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelected(a);
-                                                                setForm({
-                                                                    patient_id: a.patient_id,
-                                                                    doctor_id: a.doctor_id,
-                                                                    description: a.description,
-                                                                    date: a.date,
-                                                                    slot: a.slot,
-                                                                    severity: a.severity,
-                                                                    status: a.status || "started",
-                                                                    remarks_text: a.remarks?.text || "",
-                                                                    next_followup: a.next_followup || "",
-                                                                });
-                                                                if (a.patient_id) fetchName('patient', a.patient_id).then(() => {
-                                                                    setSelectedPatient({ id: a.patient_id, name: nameCache[`patient_${a.patient_id}`] || 'Unknown' });
-                                                                });
-                                                                if (a.doctor_id) fetchName('doctor', a.doctor_id).then(() => {
-                                                                    setSelectedDoctor({ id: a.doctor_id, name: nameCache[`doctor_${a.doctor_id}`] || 'Unknown' });
-                                                                });
-                                                                setModal("edit");
-                                                            }}
-                                                            className="text-muted-foreground hover:text-primary transition-colors"
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(a.id)}
-                                                            className="text-muted-foreground hover:text-destructive transition-colors"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={a.id}>
+                                            <tr className="hover:bg-background/20 transition-colors">
+                                                {/* Removed Date Column as it is grouped */}
+                                                <td className="px-4 py-3 text-sm text-foreground font-medium">{a.slot}</td>
+                                                <td className="px-4 py-3 text-sm text-foreground">{nameCache[`patient_${a.patient_id}`] || 'Loading...'}</td>
+                                                <td className="px-4 py-3 text-sm text-foreground">{nameCache[`doctor_${a.doctor_id}`] || 'Loading...'}</td>
+                                                <td className="px-4 py-3 text-sm text-foreground max-w-[250px] truncate" title={a.description}>{a.description}</td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <select
+                                                        value={a.status || "started"}
+                                                        onChange={(e) => updateStatus(a.id, e.target.value)}
+                                                        className={`text-xs font-medium rounded-md border-0 bg-transparent py-1 pl-0 pr-6 focus:ring-0 ${getStatusColor(a.status || 'started').replace('bg-', 'text-')}`}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <option value="started">Started</option>
+                                                        <option value="in_progress">In Progress</option>
+                                                        <option value="finished">Finished</option>
+                                                        <option value="admitted">Admitted</option>
+                                                    </select>
+                                                </td>
+                                                <td className={`px-4 py-3 text-sm font-medium capitalize ${getSeverityColor(a.severity)}`}>
+                                                    {a.severity}
+                                                </td>
+                                                <td className="px-4 py-3 flex gap-2">
+                                                    <button
+                                                        onClick={() => navigate(`/consultation/${a.id}`)}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                                                        title={a.remarks ? "Update Consultation" : "Record Consultation"}
+                                                    >
+                                                        <Stethoscope className="w-3.5 h-3.5" />
+                                                        {a.remarks ? "Update" : "Record"}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setChatAppointment({
+                                                                id: a.id,
+                                                                patientName: nameCache[`patient_${a.patient_id}`] || 'Patient'
+                                                            });
+                                                            setChatModal(true);
+                                                        }}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                                                        title="DocuMate Chat"
+                                                    >
+                                                        <Bot className="w-3.5 h-3.5" />
+                                                        DocuMate
+                                                    </button>
+                                                    {isAdmin && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelected(a);
+                                                                    setForm({
+                                                                        patient_id: a.patient_id,
+                                                                        doctor_id: a.doctor_id,
+                                                                        description: a.description,
+                                                                        date: a.date,
+                                                                        slot: a.slot,
+                                                                        severity: a.severity,
+                                                                        status: a.status || "started",
+                                                                        remarks_text: a.remarks?.text || "",
+                                                                        next_followup: a.next_followup || "",
+                                                                    });
+                                                                    if (a.patient_id) fetchName('patient', a.patient_id).then(() => {
+                                                                        setSelectedPatient({ id: a.patient_id, name: nameCache[`patient_${a.patient_id}`] || 'Unknown' });
+                                                                    });
+                                                                    if (a.doctor_id) fetchName('doctor', a.doctor_id).then(() => {
+                                                                        setSelectedDoctor({ id: a.doctor_id, name: nameCache[`doctor_${a.doctor_id}`] || 'Unknown' });
+                                                                    });
+                                                                    setModal("edit");
+                                                                }}
+                                                                className="text-muted-foreground hover:text-primary transition-colors"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(a.id)}
+                                                                className="text-muted-foreground hover:text-destructive transition-colors"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                            {a.diet_plan && (
+                                                <tr className="bg-amber-500/5">
+                                                    <td colSpan={7} className="px-4 py-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="flex items-center gap-2 shrink-0 pt-1">
+                                                                <Utensils className="w-4 h-4 text-amber-500" />
+                                                                <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Diet Plan</span>
+                                                            </div>
+                                                            <div className="prose prose-sm dark:prose-invert prose-amber max-w-none text-foreground/90 overflow-auto max-h-[200px] custom-scrollbar">
+                                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                    {a.diet_plan}
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </GlassTable>
                             </div>
@@ -681,6 +703,20 @@ const Appointments = () => {
                     >
                         {modal === "create" ? "Create Appointment" : "Save Changes"}
                     </GlassButton>
+
+                    {modal === "edit" && selected?.diet_plan && (
+                        <div className="border-t border-border/30 pt-4 mt-2">
+                            <label className="text-sm font-medium text-amber-500 mb-2 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4" />
+                                AI Diet Plan
+                            </label>
+                            <div className="w-full bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-foreground min-h-[100px] prose prose-sm dark:prose-invert prose-amber max-w-none">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {selected.diet_plan}
+                                </ReactMarkdown>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </GlassModal>
 

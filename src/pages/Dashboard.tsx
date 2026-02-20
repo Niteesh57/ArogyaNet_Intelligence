@@ -4,9 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { adminApi, appointmentsApi, namesApi, doctorsApi, patientsApi, usersApi, agentApi } from "@/lib/api";
 import {
   Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot, Phone
+  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot, Phone, Utensils
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // Sub-Dashboards
 import LabDashboard from "./LabDashboard";
@@ -17,6 +19,8 @@ import Onboarding from "./Onboarding";
 import { PatientBookingForm } from "@/components/PatientBookingForm";
 import { ConsultationModal } from "@/components/ConsultationModal";
 import { AppointmentChatModal } from "@/components/AppointmentChatModal";
+import { UserChatModal } from "@/components/UserChatModal";
+import { PatientAppointmentDetail } from "@/components/PatientAppointmentDetail";
 import { GlassButton, GlassModal, GlassInput, Shimmer, GlassCard } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
 
@@ -43,6 +47,7 @@ interface AppointmentWithDoctor {
   doctor_name?: string;
   doctor_specialization?: string;
   hospital_name?: string;
+  diet_plan?: string;
   created_at: string;
   updated_at: string;
 }
@@ -242,8 +247,14 @@ const PatientDashboard = ({ user }: { user: any }) => {
   const [bookModal, setBookModal] = useState(false);
 
   // Chat Modal State
-  const [chatModal, setChatModal] = useState(false);
-  const [chatAppointment, setChatAppointment] = useState<{ id: string, patientName: string } | null>(null);
+  const [documateChatModal, setDocumateChatModal] = useState(false);
+  const [documateAppointment, setDocumateAppointment] = useState<{ id: string, patientName: string } | null>(null);
+
+  // User chat modal state
+  const [messagesModal, setMessagesModal] = useState(false);
+
+  // Appointment Detail Modal
+  const [detailAppt, setDetailAppt] = useState<AppointmentWithDoctor | null>(null);
 
   const fetchAppointments = async () => {
     try {
@@ -371,9 +382,14 @@ const PatientDashboard = ({ user }: { user: any }) => {
       {/* Action Bar */}
       <div className="flex items-center justify-between mt-8">
         <h2 className="text-xl font-semibold">My Appointments</h2>
-        <GlassButton variant="primary" onClick={() => setBookModal(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Book New
-        </GlassButton>
+        <div className="flex gap-2">
+          <GlassButton variant="ghost" className="border-border hover:bg-secondary/50" onClick={() => setMessagesModal(true)}>
+            Messages
+          </GlassButton>
+          <GlassButton variant="primary" onClick={() => setBookModal(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Book New
+          </GlassButton>
+        </div>
       </div>
 
       {/* Appointment List */}
@@ -388,7 +404,11 @@ const PatientDashboard = ({ user }: { user: any }) => {
             {[...upcoming, ...past].map((apt) => {
               const isPast = new Date(apt.date) < new Date(new Date().toDateString());
               return (
-                <div key={apt.id} className={`p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-white/5 transition-colors group ${isPast ? "opacity-60" : ""}`}>
+                <div
+                  key={apt.id}
+                  onClick={() => setDetailAppt(apt)}
+                  className={`p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-white/5 transition-colors group cursor-pointer ${isPast ? "opacity-60" : ""}`}
+                >
                   <div className="flex items-start gap-4">
                     <div className={`p-3 rounded-2xl ${apt.severity === 'critical' ? 'bg-red-500/10 text-red-500' :
                       apt.severity === 'high' ? 'bg-orange-500/10 text-orange-500' :
@@ -416,31 +436,12 @@ const PatientDashboard = ({ user }: { user: any }) => {
                       )}
                     </div>
                   </div>
-                  {!isPast && (
-                    <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => {
-                          setChatAppointment({ id: apt.id, patientName: user?.full_name || "Me" });
-                          setChatModal(true);
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
-                        title="DocuMate Chat"
-                      >
-                        <Bot className="w-3.5 h-3.5 mr-1" />
-                        DocuMate
-                      </button>
-                      <GlassButton size="sm" variant="ghost" onClick={() => openEdit(apt)}>
-                        <Pencil className="w-4 h-4 mr-2" /> Reschedule
-                      </GlassButton>
-                      <button
-                        onClick={() => handleDelete(apt.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                        title="Cancel Appointment"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+
+                  {/* Tap to view indicator */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity">
+                    <Stethoscope className="w-4 h-4" />
+                    <span>View Details</span>
+                  </div>
                 </div>
               );
             })}
@@ -507,13 +508,27 @@ const PatientDashboard = ({ user }: { user: any }) => {
         </div>
       </GlassModal>
 
-      {/* Chat Modal */}
-      {chatAppointment && (
+      {/* DocuMate Modal */}
+      {documateAppointment && (
         <AppointmentChatModal
-          open={chatModal}
-          onClose={() => setChatModal(false)}
-          appointmentId={chatAppointment.id}
-          patientName={chatAppointment.patientName}
+          open={documateChatModal}
+          onClose={() => setDocumateChatModal(false)}
+          appointmentId={documateAppointment.id}
+          patientName={documateAppointment.patientName}
+        />
+      )}
+
+      {/* Real-time Messages Modal */}
+      <UserChatModal open={messagesModal} onClose={() => setMessagesModal(false)} />
+
+      {/* Appointment Detail Modal */}
+      {detailAppt && (
+        <PatientAppointmentDetail
+          open={!!detailAppt}
+          onClose={() => setDetailAppt(null)}
+          appointmentId={detailAppt.id}
+          doctorName={detailAppt.doctor_name}
+          doctorSpecialization={detailAppt.doctor_specialization}
         />
       )}
     </div>
@@ -665,6 +680,7 @@ const DoctorDashboard = ({ user }: { user: any }) => {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"calendar" | "patients">("calendar");
+  const [messagesModal, setMessagesModal] = useState(false);
 
   // Find doctor_id for the current user
   const [doctorId, setDoctorId] = useState<string>("");
@@ -795,19 +811,24 @@ const DoctorDashboard = ({ user }: { user: any }) => {
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex gap-1 p-1 bg-background/40 backdrop-blur-xl border border-border/50 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab("calendar")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "calendar" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <Calendar className="w-4 h-4 inline mr-1.5" />Calendar
-        </button>
-        <button
-          onClick={() => setActiveTab("patients")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "patients" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <Users className="w-4 h-4 inline mr-1.5" />My Patients
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex gap-1 p-1 bg-background/40 backdrop-blur-xl border border-border/50 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab("calendar")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "calendar" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Calendar className="w-4 h-4 inline mr-1.5" />Calendar
+          </button>
+          <button
+            onClick={() => setActiveTab("patients")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "patients" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Users className="w-4 h-4 inline mr-1.5" />My Patients
+          </button>
+        </div>
+        <GlassButton variant="ghost" className="border-border hover:bg-secondary/50 transition-colors" onClick={() => setMessagesModal(true)}>
+          Messages
+        </GlassButton>
       </div>
 
       {loading ? (
@@ -954,6 +975,9 @@ const DoctorDashboard = ({ user }: { user: any }) => {
           )) : <p className="text-center text-muted-foreground py-8">No follow-ups scheduled for today.</p>}
         </div>
       </GlassModal>
+
+      {/* Real-time Messages Modal */}
+      <UserChatModal open={messagesModal} onClose={() => setMessagesModal(false)} />
     </div>
   );
 };

@@ -3,10 +3,12 @@ import { useState, useEffect, useRef } from "react";
 import { appointmentsApi, inventoryApi, labTestsApi, usersApi, patientsApi } from "@/lib/api";
 import { GlassModal, GlassButton, GlassInput } from "@/components/GlassUI";
 import { toast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
     Pill, FlaskConical, X, Search, Loader2, FileText,
     AlertTriangle, CalendarPlus, Sparkles, Plus, Send,
-    Activity, UserPlus, Check, Stethoscope
+    Activity, UserPlus, Check, Stethoscope, Utensils, HeartPulse
 } from "lucide-react";
 
 interface MedicineItem {
@@ -65,7 +67,7 @@ function useDebouncedSearch(
 export const ConsultationModal = ({
     open, onClose, onSuccess, appointment, patientName
 }: ConsultationModalProps) => {
-    const [activeTab, setActiveTab] = useState<'clinical' | 'vitals'>('clinical');
+    const [activeTab, setActiveTab] = useState<'clinical' | 'vitals' | 'diet'>('clinical');
 
     // Clinical State
     const [remarksText, setRemarksText] = useState("");
@@ -74,6 +76,12 @@ export const ConsultationModal = ({
     const [severity, setSeverity] = useState(appointment?.severity || "medium");
     const [nextFollowup, setNextFollowup] = useState("");
     const [submitting, setSubmitting] = useState(false);
+
+    // Diet Plan State
+    const [dietPlanText, setDietPlanText] = useState("");
+    const [generatingDiet, setGeneratingDiet] = useState(false);
+    const [savingDiet, setSavingDiet] = useState(false);
+    const [isEditingDiet, setIsEditingDiet] = useState(false);
 
     // Nurse Assignment State
     const [nurseQuery, setNurseQuery] = useState("");
@@ -145,6 +153,7 @@ export const ConsultationModal = ({
             }
             if (data.severity) setSeverity(data.severity);
             if (data.next_followup) setNextFollowup(data.next_followup);
+            if (data.diet_plan) setDietPlanText(data.diet_plan);
 
         } catch (error) {
             console.error("Failed to load appointment details", error);
@@ -254,6 +263,69 @@ export const ConsultationModal = ({
         }
     };
 
+    const handleGenerateDietPlan = async () => {
+        setGeneratingDiet(true);
+        setDietPlanText("");
+        const token = localStorage.getItem("lh_token") || "";
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/agent/diet-planner`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    appointment_id: appointment.id,
+                    patient_problem: fullAppointment?.description || "General checkup",
+                    doctor_remarks: remarksText || "Please evaluate for general diet."
+                })
+            });
+
+            if (!res.body) throw new Error("No response body");
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split("\n");
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            if (data.type === 'token') {
+                                setDietPlanText(prev => prev + data.content);
+                            } else if (data.type === 'error') {
+                                toast({ title: "Generation failed", description: data.message, variant: "destructive" });
+                            }
+                        } catch (e) { }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            toast({ title: "Failed to generate plan", variant: "destructive" });
+        } finally {
+            setGeneratingDiet(false);
+        }
+    };
+
+    const handleSaveDietPlan = async () => {
+        setSavingDiet(true);
+        try {
+            await appointmentsApi.update(appointment.id, { diet_plan: dietPlanText });
+            toast({ title: "Diet Plan saved successfully!" });
+        } catch (e) {
+            console.error(e);
+            toast({ title: "Failed to save Diet Plan", variant: "destructive" });
+        } finally {
+            setSavingDiet(false);
+        }
+    };
+
     const severityColors: Record<string, string> = {
         low: "text-green-400 bg-green-500/10 border-green-500/30",
         medium: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
@@ -290,6 +362,16 @@ export const ConsultationModal = ({
                     >
                         <Activity className="w-4 h-4 inline mr-2" />
                         Vitals & Care Team
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('diet')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'diet'
+                            ? "bg-amber-500/20 text-amber-500 border border-amber-500/20"
+                            : "text-muted-foreground hover:bg-secondary/50"
+                            }`}
+                    >
+                        <Utensils className="w-4 h-4 inline mr-2" />
+                        AI Diet Planner
                     </button>
                 </div>
             </div>
@@ -478,7 +560,7 @@ export const ConsultationModal = ({
                             </GlassButton>
                         </div>
                     </div>
-                ) : (
+                ) : activeTab === 'vitals' ? (
                     /* ── Vitals & Care Team Tab ── */
                     <div className="space-y-6">
 
@@ -634,7 +716,61 @@ export const ConsultationModal = ({
                         </div>
 
                     </div>
-                )}
+                ) : activeTab === 'diet' ? (
+                    <div className="space-y-4">
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-2">
+                            <h4 className="text-amber-500 font-medium flex items-center mb-1">
+                                <Sparkles className="w-4 h-4 mr-2" /> AI Diet Planner
+                            </h4>
+                            <p className="text-xs text-amber-500/80">
+                                Click "Generate Diet Plan" to automatically stream a personalized nutrition guide based on the patient's problem ({fullAppointment?.description || "None"}) and your consultation remarks. If needed, you can manually rewrite or edit the text before saving.
+                            </p>
+                        </div>
+
+                        {isEditingDiet || generatingDiet || !dietPlanText ? (
+                            <textarea
+                                autoFocus={isEditingDiet}
+                                value={dietPlanText}
+                                onChange={e => setDietPlanText(e.target.value)}
+                                onBlur={() => {
+                                    setIsEditingDiet(false);
+                                    if (dietPlanText !== fullAppointment?.diet_plan && !generatingDiet) {
+                                        handleSaveDietPlan();
+                                    }
+                                }}
+                                placeholder="An AI-generated, customized diet plan will appear here..."
+                                rows={12}
+                                className="w-full bg-background border border-input rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 custom-scrollbar resize-none font-mono"
+                            />
+                        ) : (
+                            <div
+                                onClick={() => setIsEditingDiet(true)}
+                                className="w-full bg-background/50 border border-input/50 rounded-xl px-4 py-3 text-sm text-foreground cursor-text min-h-[250px] prose prose-sm dark:prose-invert prose-amber max-w-none hover:border-amber-500/50 transition-colors"
+                                title="Click to edit"
+                            >
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {dietPlanText}
+                                </ReactMarkdown>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 pt-2">
+                            <GlassButton
+                                onClick={handleGenerateDietPlan}
+                                disabled={generatingDiet}
+                                className="flex-1 border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                                variant="ghost"
+                            >
+                                {generatingDiet ? (
+                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Streaming...</>
+                                ) : (
+                                    <><Sparkles className="w-4 h-4 mr-2" /> Generate Diet Plan</>
+                                )}
+                            </GlassButton>
+                            {/* Save is handled automatically on blur or stream completion */}
+                        </div>
+                    </div>
+                ) : null}
             </div>
         </GlassModal>
     );

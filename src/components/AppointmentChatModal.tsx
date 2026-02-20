@@ -129,7 +129,7 @@ export const AppointmentChatModal = ({ open, onClose, appointmentId, patientName
 
         try {
             // Use fetch for streaming support
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/agent/analyze`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/agent/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

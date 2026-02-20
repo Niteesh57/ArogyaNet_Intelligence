@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -40,7 +40,7 @@ export const authApi = {
   // Google OAuth is redirect-based (GET /auth/login/google → callback)
   // No POST endpoint exists. Use window.location for OAuth redirect:
   googleLoginRedirect: () => {
-    const baseURL = api.defaults.baseURL || "http://localhost:8000/api/v1";
+    const baseURL = import.meta.env.VITE_API_URL;
     window.location.href = `${baseURL}/auth/login/google`;
   },
   me: () => api.get("/auth/me"),
@@ -270,6 +270,12 @@ export const eventsApi = {
   get: (id: string) => api.get(`/events/${id}`),
   append: (id: string, data: any) => api.patch(`/events/${id}/append`, { data }),
   update: (id: string, data: any) => api.put(`/events/${id}`, data),
+};
+
+// Chat
+export const chatApi = {
+  getContacts: () => api.get("/chat/contacts"),
+  getHistory: (contactId: string, skip = 0, limit = 100) => api.get(`/chat/history/${contactId}?skip=${skip}&limit=${limit}`),
 };
 
 
