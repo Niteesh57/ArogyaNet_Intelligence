@@ -1,14 +1,18 @@
-
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { adminApi, appointmentsApi, namesApi, doctorsApi, patientsApi, usersApi, agentApi } from "@/lib/api";
+import { adminApi, appointmentsApi, namesApi, doctorsApi, patientsApi, usersApi, agentApi, eventsApi } from "@/lib/api";
 import {
   Stethoscope, HeartPulse, Users, Package, FlaskConical,
-  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot, Phone, Utensils
+  Sparkles, Clock, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Activity, UserCheck, Bot, Phone, Utensils,
+  Filter, BarChart3, PieChart, TrendingUp
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, AreaChart, Area
+} from 'recharts';
 
 // Sub-Dashboards
 import LabDashboard from "./LabDashboard";
@@ -25,6 +29,14 @@ import { GlassButton, GlassModal, GlassInput, Shimmer, GlassCard } from "@/compo
 import { toast } from "@/hooks/use-toast";
 
 /* ─── Types ─── */
+interface EventGraphEntry {
+  place_name?: string;
+  _event_name?: string;
+  _event_id?: string;
+  _appended_at?: string;
+  [key: string]: any;
+}
+
 interface Stats {
   total_doctors?: number;
   total_nurses?: number;
@@ -183,60 +195,317 @@ const AdminUserSearch = () => {
    ADMIN DASHBOARD
    ════════════════════════════════════════════════════════ */
 const AdminDashboard = ({ user, isAdmin }: { user: any; isAdmin: boolean }) => {
-  const [stats, setStats] = useState<Stats>({});
+  const [graphData, setGraphData] = useState<EventGraphEntry[]>([]);
+  const [filters, setFilters] = useState<{ places: string[]; available_keys: string[] }>({ places: [], available_keys: [] });
+  const [selectedPlace, setSelectedPlace] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
+  const [selectedMetric, setSelectedMetric] = useState<string>("");
 
+  // Fetch unique places/keys on mount
   useEffect(() => {
     if (isAdmin) {
-      adminApi.dashboardStats().then((r) => setStats(r.data)).catch(() => { });
+      eventsApi.getFilters()
+        .then(res => setFilters(res.data))
+        .catch(() => toast({ title: "Failed to load filters", variant: "destructive" }));
     }
   }, [isAdmin]);
 
-  const statCards = [
-    { label: "Total Doctors", value: stats.total_doctors || 0, icon: Stethoscope },
-    { label: "Total Nurses", value: stats.total_nurses || 0, icon: HeartPulse },
-    { label: "Total Patients", value: stats.total_patients || 0, icon: Users },
-    { label: "Total Medicines", value: stats.total_medicines || 0, icon: Package },
-    { label: "Low Stock Alerts", value: stats.low_stock_alerts || 0, icon: Sparkles, alert: true },
-    { label: "Total Lab Tests", value: stats.total_lab_tests || 0, icon: FlaskConical },
-  ];
+  // Fetch graph data whenever place filter changes
+  useEffect(() => {
+    if (isAdmin) {
+      setLoading(true);
+      const params = selectedPlace !== "all" ? { place_name: selectedPlace } : {};
+      eventsApi.getGraphData(params)
+        .then(res => setGraphData(res.data))
+        .catch(() => toast({ title: "Failed to load graph data", variant: "destructive" }))
+        .finally(() => setLoading(false));
+    }
+  }, [isAdmin, selectedPlace]);
+
+  // Intelligent Numeric Key Detection
+  const numericKeys = useMemo(() => {
+    if (!graphData.length) return [];
+    const keys = new Set<string>();
+    // Check first 100 entries for efficiency
+    graphData.slice(0, 100).forEach(entry => {
+      Object.entries(entry).forEach(([key, value]) => {
+        if (key.startsWith('_')) return; // Ignore internal metadata
+        if (key === 'age') return; // Specific exclusion if desired, or include it
+        if (typeof value === 'number' || (!isNaN(Number(value)) && typeof value === 'string' && value.trim() !== "")) {
+          keys.add(key);
+        }
+      });
+    });
+    return Array.from(keys).sort();
+  }, [graphData]);
+
+  // Auto-select first available priority metric if not set
+  useEffect(() => {
+    if (numericKeys.length > 0 && !selectedMetric) {
+      // Priority keys to select first if found
+      const priority = ['systolic_bp', 'BP', 'sugar_level', 'platelets_count'];
+      const foundPriority = priority.find(p => numericKeys.includes(p));
+      setSelectedMetric(foundPriority || numericKeys[0]);
+    }
+  }, [numericKeys, selectedMetric]);
+
+  // Utility to parse any available date field
+  const parseDate = (entry: any) => {
+    const dateStr = entry._appended_at || entry.timestamp || entry.created_at || entry._updated_at;
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  // Statistical calculations for ALL detected keys
+  const metricsStats = useMemo(() => {
+    const results: Record<string, { avg: number; label: string }> = {};
+    if (!graphData.length) return results;
+
+    numericKeys.forEach(key => {
+      let sum = 0;
+      let count = 0;
+      graphData.forEach(entry => {
+        const val = Number(entry[key]);
+        if (!isNaN(val)) {
+          sum += val;
+          count++;
+        }
+      });
+      if (count > 0) {
+        results[key] = {
+          avg: Math.round(sum / count),
+          label: key.replace(/_/g, ' ').toUpperCase()
+        };
+      }
+    });
+    return results;
+  }, [graphData, numericKeys]);
+
+  // Format data for Recharts (Dynamic Trend)
+  const chartData = useMemo(() => {
+    return graphData
+      .map(d => ({ ...d, _parsedDate: parseDate(d) }))
+      .filter(d => d._parsedDate)
+      .sort((a, b) => a._parsedDate!.getTime() - b._parsedDate!.getTime())
+      .map(d => {
+        const dataPoint: any = {
+          time: d._parsedDate!.toLocaleDateString(),
+          fullTime: d._parsedDate!.toLocaleString(),
+          place: d.place_name || "Unknown"
+        };
+        numericKeys.forEach(k => {
+          dataPoint[k] = Number(d[k]);
+        });
+        return dataPoint;
+      });
+  }, [graphData, numericKeys]);
 
   return (
-    <div className="space-y-10">
-      <DateHeader name={user?.full_name} />
-      {isAdmin && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-fade-up">
-            {statCards.map((s) => (
-              <div
-                key={s.label}
-                className={`dashboard-card p-4 hover:border-primary/50 transition-colors ${s.alert && s.value > 0 ? "border-destructive/50 bg-destructive/5" : ""}`}
-              >
-                <div className="flex flex-col items-center justify-center space-y-2">
-                  <div className={`p-2 rounded-full ${s.alert && s.value > 0 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
-                    <s.icon className="w-5 h-5" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={s.value} /></p>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{s.label}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-border/40 pb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <TrendingUp className="w-8 h-8 text-primary" />
+            Event Analytics
+          </h1>
+          <p className="text-muted-foreground mt-1">Intelligent visualization of unstructured clinical data</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Place Filter */}
+          <div className="flex items-center gap-2 bg-secondary/30 p-1.5 rounded-lg border border-border/50">
+            <Filter className="w-4 h-4 ml-2 text-muted-foreground" />
+            <select
+              value={selectedPlace}
+              onChange={(e) => setSelectedPlace(e.target.value)}
+              className="bg-transparent border-none text-sm focus:ring-0 cursor-pointer pr-8"
+            >
+              <option value="all">All Locations</option>
+              {filters.places.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
           </div>
 
-          {/* Admin Actions Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-xl">User Management</h3>
+          {/* Metric Selector */}
+          <div className="flex items-center gap-2 bg-primary/10 p-1.5 rounded-lg border border-primary/20">
+            <BarChart3 className="w-4 h-4 ml-2 text-primary" />
+            <select
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value)}
+              className="bg-transparent border-none text-sm font-medium text-primary focus:ring-0 cursor-pointer pr-8"
+            >
+              <option value="" disabled>Select Metric</option>
+              {numericKeys.map(k => (
+                <option key={k} value={k} className="text-foreground">
+                  View {k.replace(/_/g, ' ').toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => <Shimmer key={i} className="h-32" />)}
+        </div>
+      ) : (
+        <>
+          {/* Statistical summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GlassCard className="p-6 relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                <Users className="w-24 h-24" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Entries</p>
+              <h3 className="text-4xl font-bold mt-2 text-foreground">
+                <AnimatedCounter target={graphData.length} />
+              </h3>
+              <p className="text-xs text-primary mt-2">Parsed from {filters.places.length || 0} locations</p>
+            </GlassCard>
+
+            {/* Dynamic Metric Cards (Show top 3 or selected) */}
+            {numericKeys.slice(0, 3).map(key => (
+              <GlassCard key={key} className="p-6 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform duration-500 text-primary">
+                  <Activity className="w-24 h-24" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Avg {key.replace(/_/g, ' ')}</p>
+                <h3 className="text-4xl font-bold mt-2 text-foreground">
+                  {metricsStats[key]?.avg || 0}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-2">Cohort arithmetic mean</p>
+              </GlassCard>
+            ))}
+
+            {numericKeys.length < 3 && (
+              <GlassCard className="p-6 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                  <BarChart3 className="w-24 h-24 text-emerald-500" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">System Status</p>
+                <h3 className="text-4xl font-bold mt-2 text-emerald-500">
+                  {graphData.length > 0 ? "Active" : "Idle"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-2">Data ingestion operational</p>
+              </GlassCard>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {/* Primary Trend Graph */}
+            <GlassCard className="xl:col-span-2 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold">{selectedMetric ? selectedMetric.replace(/_/g, ' ').toUpperCase() : "Metric"} Trends</h3>
+                  <p className="text-sm text-muted-foreground">Historical progression across all recorded events</p>
+                </div>
+                <TrendingUp className="w-5 h-5 text-primary opacity-50" />
+              </div>
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-background/95 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl shadow-black/50">
+                              <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-tighter">{payload[0].payload.fullTime}</p>
+                              <p className="text-sm font-bold text-foreground">
+                                {selectedMetric.replace(/_/g, ' ')}: <span className="text-primary">{payload[0].value}</span>
+                              </p>
+                              <p className="text-[11px] text-muted-foreground mt-1">Location: {payload[0].payload.place}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey={selectedMetric}
+                      stroke="var(--primary)"
+                      fillOpacity={1}
+                      fill="url(#colorMetric)"
+                      strokeWidth={3}
+                      name={selectedMetric}
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </GlassCard>
+
+            {/* Distribution/Meta Panel */}
+            <div className="space-y-8">
+              <GlassCard className="p-6">
+                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                  <PieChart className="w-5 h-5 text-emerald-500" />
+                  Data Composition
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-xs text-muted-foreground">Detected {numericKeys.length} numeric field(s) available for visualization in this dataset.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {numericKeys.map(k => (
+                      <button
+                        key={k}
+                        onClick={() => setSelectedMetric(k)}
+                        className={`text-[10px] px-2 py-1 rounded-md border transition-all ${selectedMetric === k ? 'bg-primary text-white border-primary' : 'bg-secondary/50 border-border hover:border-primary/50'}`}
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Location Overview</h3>
+                <div className="space-y-4">
+                  {filters.places.slice(0, 5).map(place => {
+                    const count = graphData.filter(d => d.place_name === place).length;
+                    const percent = graphData.length ? Math.round((count / graphData.length) * 100) : 0;
+                    return (
+                      <div key={place} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>{place}</span>
+                          <span className="text-muted-foreground">{count} entries ({percent}%)</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full bg-primary/60" style={{ width: `${percent}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </GlassCard>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-border/40 pt-8">
+            <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">
+              <UserCheck className="w-6 h-6 text-primary" />
+              Personnel Management
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <AdminUserSearch />
             </div>
-            {/* Add more admin panels here if needed */}
           </div>
         </>
       )}
     </div>
   );
 };
+
 
 /* ════════════════════════════════════════════════════════
    PATIENT DASHBOARD

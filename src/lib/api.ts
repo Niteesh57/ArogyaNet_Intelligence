@@ -270,6 +270,8 @@ export const eventsApi = {
   get: (id: string) => api.get(`/events/${id}`),
   append: (id: string, data: any) => api.patch(`/events/${id}/append`, { data }),
   update: (id: string, data: any) => api.put(`/events/${id}`, data),
+  getFilters: () => api.get("/events/stats/filters"),
+  getGraphData: (params: { place_name?: string; event_id?: string }) => api.get("/events/stats/graph-data", { params }),
 };
 
 // Chat
