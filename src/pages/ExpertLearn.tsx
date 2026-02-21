@@ -67,7 +67,8 @@ const ExpertLearn = () => {
                 payload.hospital_id = user?.hospital_id;
             }
 
-            const response = await fetch("/api/v1/agent/expert-chat", {
+            const baseURL = import.meta.env.VITE_API_URL || "";
+            const response = await fetch(`${baseURL}/agent/expert-chat`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
