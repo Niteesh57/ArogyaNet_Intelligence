@@ -92,7 +92,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   );
 
   return (
-    <div className="min-h-screen w-full bg-background flex">
+    <div className="h-screen w-full bg-background flex overflow-hidden">
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-sidebar px-4 flex items-center justify-between border-b border-sidebar-border shadow-sm">
         <div className="flex items-center gap-3">
@@ -113,7 +113,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       )}
 
       {/* Desktop sidebar */}
-      <aside className={`hidden lg:block sticky top-0 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 ${collapsed ? "w-[70px]" : "w-64"}`}>
+      <aside className={`hidden lg:block relative h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 ${collapsed ? "w-[70px]" : "w-64"}`}>
         <SidebarContent />
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -124,8 +124,8 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pt-16 lg:pt-0">
-        <div className="h-full px-4 py-8 lg:px-8 max-w-7xl mx-auto">
+      <main className="flex-1 min-w-0 pt-16 lg:pt-0 h-full overflow-y-auto scrollbar-themed">
+        <div className="px-4 py-8 lg:px-8 h-full flex flex-col">
           {children}
         </div>
       </main>

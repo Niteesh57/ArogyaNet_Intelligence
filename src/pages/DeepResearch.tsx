@@ -141,7 +141,7 @@ export default function DeepResearch() {
     };
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto pb-10">
+        <div className="space-y-6 pb-10">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Deep Research Agent</h1>
                 <p className="text-muted-foreground mt-1">Upload multimodal data and generate comprehensive medical reports powered by AI.</p>

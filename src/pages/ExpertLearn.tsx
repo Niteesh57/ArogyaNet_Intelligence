@@ -169,7 +169,7 @@ const ExpertLearn = () => {
             {/* Chat Area */}
             <GlassCard className="flex-1 flex flex-col overflow-hidden border-primary/20 shadow-lg shadow-primary/5">
                 <ScrollArea className="flex-1 p-6">
-                    <div className="space-y-6 max-w-4xl mx-auto">
+                    <div className="space-y-6 mx-auto">
                         {messages.map((msg) => (
                             <div
                                 key={msg.id}
@@ -237,7 +237,7 @@ const ExpertLearn = () => {
 
                 {/* Input Area */}
                 <div className="p-4 bg-secondary/30 border-t border-border/50">
-                    <div className="max-w-4xl mx-auto space-y-3">
+                    <div className="mx-auto space-y-3">
                         {/* Filters */}
                         <div className="flex items-center gap-2">
                             <button

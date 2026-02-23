@@ -212,12 +212,17 @@ export const documentsApi = {
 
 // AI Agent
 export const agentApi = {
+  // Appointment Suggestions
   suggestAppointment: (data: { description: string; appointment_date?: string; patient_id?: string; hospital_id?: string }) =>
     api.post("/agent/suggest-appointment", data),
+
+  // Document Analysis (Streaming Response)
   analyze: (data: { document_url: string; question: string; appointment_id?: string }) =>
-    api.post("/agent/analyze", data),
+    api.post("/agent/analyze", data, { responseType: 'text' }), // Expecting plain text or stream
   getChatHistory: (appointmentId: string) => api.get(`/agent/appointments/${appointmentId}/chat`),
-  triggerCall: (data: { phone_number: string; appointment_id?: string }) => api.post("/agent/trigger-call", data),
+  // Outbound Calls
+  triggerCall: (data: { phone_number: string; appointment_id?: string; doctor_prompt?: string }) => api.post("/agent/trigger-call", data),
+  getCallScripts: (appointmentId: string) => api.get(`/agent/call-scripts/${appointmentId}`),
   expertCheck: (data: { check_text: string; category: string; hospital_id?: string; medication?: string[]; lab_test?: string[] }) => api.post("/agent/expert-check", data),
 };
 

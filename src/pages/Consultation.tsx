@@ -158,7 +158,7 @@ const Consultation = () => {
     const [loading, setLoading] = useState(true);
 
     // Nurse Assignment State
-    const [activeTab, setActiveTab] = useState<'clinical' | 'vitals'>('clinical');
+    const [activeTab, setActiveTab] = useState<'clinical' | 'vitals' | 'call-history'>('clinical');
     const [nurseQuery, setNurseQuery] = useState("");
     const [nurses, setNurses] = useState<any[]>([]);
     const [assignedNurse, setAssignedNurse] = useState<any>(null);
@@ -173,7 +173,14 @@ const Consultation = () => {
     const [nextFollowup, setNextFollowup] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
+    // Doctor Prompt Modal State
+    const [showDocPromptModal, setShowDocPromptModal] = useState(false);
+    const [doctorPrompt, setDoctorPrompt] = useState("");
+    const [isTriggeringCall, setIsTriggeringCall] = useState(false);
 
+    // Call History State
+    const [callScripts, setCallScripts] = useState<any[]>([]);
+    const [loadingScripts, setLoadingScripts] = useState(false);
 
     // ... existing search hooks ...
 
@@ -234,6 +241,24 @@ const Consultation = () => {
     useEffect(() => {
         if (id && activeTab === 'vitals') {
             loadVitals(id);
+        }
+    }, [id, activeTab]);
+
+    // Fetch call scripts when tab changes
+    useEffect(() => {
+        if (id && activeTab === 'call-history') {
+            const loadScripts = async () => {
+                setLoadingScripts(true);
+                try {
+                    const res = await agentApi.getCallScripts(id);
+                    setCallScripts(res.data?.call_scripts || []);
+                } catch {
+                    console.error("Failed to load call scripts");
+                } finally {
+                    setLoadingScripts(false);
+                }
+            };
+            loadScripts();
         }
     }, [id, activeTab]);
 
@@ -560,7 +585,7 @@ const Consultation = () => {
     }
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 w-full">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <button onClick={() => navigate("/appointments")} className="p-2 rounded-lg hover:bg-accent transition-colors">
@@ -594,16 +619,8 @@ const Consultation = () => {
                             disabled={!appointment.patient?.phone}
                             onClick={() => {
                                 if (!appointment.patient?.phone) return;
-                                // Trigger backend call
-                                agentApi.triggerCall({
-                                    phone_number: appointment.patient.phone,
-                                    appointment_id: appointment.id
-                                })
-                                    .then(() => toast({ title: "Call Initiated", description: "AI agent is calling the patient." }))
-                                    .catch(e => {
-                                        console.error("Backend call trigger failed:", e);
-                                        toast({ variant: "destructive", title: "Call Failed", description: "Could not trigger AI call." });
-                                    });
+                                setDoctorPrompt(""); // Reset prompt
+                                setShowDocPromptModal(true);
                             }}
                             className={`border-green-500/20 ${appointment.patient?.phone ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "opacity-50 cursor-not-allowed text-muted-foreground"}`}
                         >
@@ -637,6 +654,14 @@ const Consultation = () => {
                     <Stethoscope className="w-4 h-4 inline mr-2" />
                     Vitals & Care Team
                     {activeTab === 'vitals' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />}
+                </button>
+                <button
+                    onClick={() => setActiveTab('call-history')}
+                    className={`pb-2 text-sm font-medium transition-colors relative ${activeTab === 'call-history' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                    <Phone className="w-4 h-4 inline mr-2" />
+                    Call History
+                    {activeTab === 'call-history' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />}
                 </button>
             </div>
 
@@ -871,7 +896,7 @@ const Consultation = () => {
                             </GlassCard>
                         </div>
                     </>
-                ) : (
+                ) : activeTab === 'vitals' ? (
                     /* ═══ Care Team & Vitals ═══ */
                     <div className="space-y-6">
                         <GlassCard>
@@ -1007,7 +1032,42 @@ const Consultation = () => {
                             </div>
                         </GlassCard>
                     </div>
-                )
+                ) : activeTab === 'call-history' ? (
+                    /* ═══ Call History ═══ */
+                    <div className="space-y-6">
+                        <GlassCard className="p-6">
+                            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                                <Phone className="w-5 h-5 text-primary" />
+                                AI Receptionist Call Transcript
+                            </h2>
+                            {loadingScripts ? (
+                                <div className="flex justify-center py-10">
+                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                </div>
+                            ) : callScripts.length === 0 ? (
+                                <div className="text-center py-12 bg-secondary/20 rounded-xl border border-border/50">
+                                    <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                                    <h3 className="text-lg font-medium">No Call History</h3>
+                                    <p className="text-muted-foreground mt-1">There are no recorded transcripts for this appointment yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 max-h-[500px] overflow-y-auto px-2 custom-scrollbar">
+                                    {callScripts.map((msg: any, i: number) => (
+                                        <div key={msg.id || i} className={`flex ${msg.speaker === 'agent' ? 'justify-start' : 'justify-end'}`}>
+                                            <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${msg.speaker === 'agent' ? 'bg-secondary/50 text-foreground rounded-tl-none' : 'bg-primary text-primary-foreground rounded-tr-none'}`}>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs font-semibold uppercase opacity-80">{msg.speaker === 'agent' ? 'AI Agent' : 'Patient'}</span>
+                                                    <span className="text-[10px] opacity-60">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                                <p className="text-sm">{msg.message}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </GlassCard>
+                    </div>
+                ) : null
             }
 
             {/* ═══ Action Bar ═══ */}
@@ -1135,6 +1195,57 @@ const Consultation = () => {
                     </div>
                 </div>
             </GlassModal>
+
+            {/* Doctor Call Custom Prompt Modal */}
+            <GlassModal open={showDocPromptModal} onClose={() => setShowDocPromptModal(false)} title="Configure Agent Call">
+                <div className="p-6 space-y-4 max-w-md w-full">
+                    <p className="text-sm text-muted-foreground mb-4">
+                        What specific questions should the AI agent ask {patientName} during this call?
+                    </p>
+
+                    <textarea
+                        value={doctorPrompt}
+                        onChange={(e) => setDoctorPrompt(e.target.value)}
+                        className="w-full bg-background border border-input rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        rows={4}
+                        placeholder="e.g. Ask them if they are still experiencing pain in their lower back after taking the new medicine..."
+                    />
+
+                    <div className="flex gap-3 justify-end mt-6">
+                        <GlassButton onClick={() => setShowDocPromptModal(false)} variant="ghost" disabled={isTriggeringCall}>
+                            Cancel
+                        </GlassButton>
+                        <GlassButton
+                            onClick={() => {
+                                if (!appointment?.patient?.phone) return;
+                                setIsTriggeringCall(true);
+                                agentApi.triggerCall({
+                                    phone_number: appointment.patient.phone,
+                                    appointment_id: appointment.id,
+                                    doctor_prompt: doctorPrompt || undefined
+                                })
+                                    .then(() => {
+                                        toast({ title: "Call Initiated", description: "AI agent is calling the patient." });
+                                        setShowDocPromptModal(false);
+                                    })
+                                    .catch(e => {
+                                        console.error("Backend call trigger failed:", e);
+                                        toast({ variant: "destructive", title: "Call Failed", description: "Could not trigger AI call." });
+                                    })
+                                    .finally(() => {
+                                        setIsTriggeringCall(false);
+                                    });
+                            }}
+                            disabled={isTriggeringCall}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            {isTriggeringCall ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
+                            Start Call
+                        </GlassButton>
+                    </div>
+                </div>
+            </GlassModal>
+
         </div>
 
     );

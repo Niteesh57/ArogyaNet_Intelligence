@@ -7,7 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
     Pill, FlaskConical, X, Search, Loader2, FileText,
-    AlertTriangle, CalendarPlus, Sparkles, Plus, Send,
+    AlertTriangle, CalendarPlus, Sparkles, Plus, Send, Phone,
     Activity, UserPlus, Check, Stethoscope, Utensils, HeartPulse
 } from "lucide-react";
 
@@ -82,6 +82,11 @@ export const ConsultationModal = ({
     const [generatingDiet, setGeneratingDiet] = useState(false);
     const [savingDiet, setSavingDiet] = useState(false);
     const [isEditingDiet, setIsEditingDiet] = useState(false);
+
+    // Doctor Prompt Modal State
+    const [showDocPromptModal, setShowDocPromptModal] = useState(false);
+    const [doctorPrompt, setDoctorPrompt] = useState("");
+    const [isTriggeringCall, setIsTriggeringCall] = useState(false);
 
     // Nurse Assignment State
     const [nurseQuery, setNurseQuery] = useState("");
@@ -334,130 +339,195 @@ export const ConsultationModal = ({
     };
 
     return (
-        <GlassModal
-            open={open}
-            onClose={onClose}
-            title="Consultation"
-            className="max-w-4xl text-left h-[85vh] flex flex-col"
-        >
-            <div className="flex-none pb-4 border-b border-border/40">
-                {/* Tabs */}
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setActiveTab('clinical')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'clinical'
-                            ? "bg-primary/20 text-primary border border-primary/20"
-                            : "text-muted-foreground hover:bg-secondary/50"
-                            }`}
-                    >
-                        <Stethoscope className="w-4 h-4 inline mr-2" />
-                        Clinical Note
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('vitals')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'vitals'
-                            ? "bg-primary/20 text-primary border border-primary/20"
-                            : "text-muted-foreground hover:bg-secondary/50"
-                            }`}
-                    >
-                        <Activity className="w-4 h-4 inline mr-2" />
-                        Vitals & Care Team
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('diet')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'diet'
-                            ? "bg-amber-500/20 text-amber-500 border border-amber-500/20"
-                            : "text-muted-foreground hover:bg-secondary/50"
-                            }`}
-                    >
-                        <Utensils className="w-4 h-4 inline mr-2" />
-                        AI Diet Planner
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto pt-4 custom-scrollbar">
-                {/* Patient Info Header */}
-                <div className="flex items-center justify-between p-4 mb-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
-                    <div>
-                        <h3 className="text-lg font-semibold text-foreground">{patientName}</h3>
-                        <p className="text-sm text-muted-foreground">
-                            {appointment?.date} · {appointment?.slot}
-                            {appointment?.description && ` — ${appointment.description}`}
-                        </p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium border ${severityColors[severity]}`}>
-                        {severity}
+        <>
+            <GlassModal
+                open={open}
+                onClose={onClose}
+                title="Consultation"
+                className="max-w-4xl text-left h-[85vh] flex flex-col"
+            >
+                <div className="flex-none pb-4 border-b border-border/40">
+                    {/* Tabs */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setActiveTab('clinical')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'clinical'
+                                ? "bg-primary/20 text-primary border border-primary/20"
+                                : "text-muted-foreground hover:bg-secondary/50"
+                                }`}
+                        >
+                            <Stethoscope className="w-4 h-4 inline mr-2" />
+                            Clinical Note
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('vitals')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'vitals'
+                                ? "bg-primary/20 text-primary border border-primary/20"
+                                : "text-muted-foreground hover:bg-secondary/50"
+                                }`}
+                        >
+                            <Activity className="w-4 h-4 inline mr-2" />
+                            Vitals & Care Team
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('diet')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'diet'
+                                ? "bg-amber-500/20 text-amber-500 border border-amber-500/20"
+                                : "text-muted-foreground hover:bg-secondary/50"
+                                }`}
+                        >
+                            <Utensils className="w-4 h-4 inline mr-2" />
+                            AI Diet Planner
+                        </button>
                     </div>
                 </div>
 
-                {activeTab === 'clinical' ? (
-                    <div className="space-y-5">
-                        {/* Remarks */}
+                <div className="flex-1 overflow-y-auto pt-4 custom-scrollbar">
+                    {/* Patient Info Header */}
+                    <div className="flex items-center justify-between p-4 mb-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                                <FileText className="w-4 h-4 inline mr-1.5" />
-                                Remarks
-                            </label>
-                            <textarea
-                                value={remarksText}
-                                onChange={e => setRemarksText(e.target.value)}
-                                placeholder="Patient has flu symptoms, prescribed rest and fluids..."
-                                rows={3}
-                                className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
-                            />
+                            <h3 className="text-lg font-semibold text-foreground">{patientName}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {appointment?.date} · {appointment?.slot}
+                                {appointment?.description && ` — ${appointment.description}`}
+                            </p>
                         </div>
+                        <div className="flex items-center gap-3">
+                            {appointment?.patient?.phone && (
+                                <GlassButton
+                                    size="sm"
+                                    disabled={!appointment.patient?.phone}
+                                    onClick={() => {
+                                        if (!appointment.patient?.phone) return;
+                                        setDoctorPrompt(""); // Reset prompt
+                                        setShowDocPromptModal(true);
+                                    }}
+                                    className="border-green-500/20 bg-green-500/10 text-green-500 hover:bg-green-500/20"
+                                >
+                                    <Phone className="w-4 h-4 mr-2" />
+                                    Call Patient
+                                </GlassButton>
+                            )}
+                            <div className={`px-3 py-1 rounded-full text-xs font-medium border ${severityColors[severity]}`}>
+                                {severity}
+                            </div>
+                        </div>
+                    </div>
 
-                        {/* Medicine & Lab side by side */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* ── Medicines ── */}
+                    {activeTab === 'clinical' ? (
+                        <div className="space-y-5">
+                            {/* Remarks */}
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-2">
-                                    <Pill className="w-4 h-4 inline mr-1.5" />
-                                    Medicines
+                                    <FileText className="w-4 h-4 inline mr-1.5" />
+                                    Remarks
                                 </label>
-                                <div className="relative">
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                                <textarea
+                                    value={remarksText}
+                                    onChange={e => setRemarksText(e.target.value)}
+                                    placeholder="Patient has flu symptoms, prescribed rest and fluids..."
+                                    rows={3}
+                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
+                                />
+                            </div>
+
+                            {/* Medicine & Lab side by side */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* ── Medicines ── */}
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        <Pill className="w-4 h-4 inline mr-1.5" />
+                                        Medicines
+                                    </label>
+                                    <div className="relative">
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                                                <input
+                                                    value={medSearch.query}
+                                                    onChange={e => { medSearch.setQuery(e.target.value); setShowMedDropdown(true); }}
+                                                    onFocus={() => setShowMedDropdown(true)}
+                                                    placeholder="Search medicine..."
+                                                    className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                />
+                                                {/* Dropdown */}
+                                                {showMedDropdown && medSearch.results.length > 0 && (
+                                                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
+                                                        {medSearch.results.map((med: any) => (
+                                                            <button
+                                                                key={med.id}
+                                                                onClick={() => addMedicine(med)}
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                                                            >
+                                                                <span>{med.name}</span>
+                                                                <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                             <input
-                                                value={medSearch.query}
-                                                onChange={e => { medSearch.setQuery(e.target.value); setShowMedDropdown(true); }}
-                                                onFocus={() => setShowMedDropdown(true)}
-                                                placeholder="Search medicine..."
-                                                className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                value={pendingDosage}
+                                                onChange={e => setPendingDosage(e.target.value)}
+                                                placeholder="Dosage"
+                                                className="w-24 bg-background border border-input rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                             />
-                                            {/* Dropdown */}
-                                            {showMedDropdown && medSearch.results.length > 0 && (
-                                                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
-                                                    {medSearch.results.map((med: any) => (
-                                                        <button
-                                                            key={med.id}
-                                                            onClick={() => addMedicine(med)}
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
-                                                        >
-                                                            <span>{med.name}</span>
-                                                            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
                                         </div>
+
+                                        {/* Pills */}
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {medicines.map(m => (
+                                                <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                    <Pill className="w-3 h-3" />
+                                                    {m.name}{m.dosage ? ` (${m.dosage})` : ""}
+                                                    <button onClick={() => removeMedicine(m.id)} className="ml-0.5 hover:text-red-400 transition-colors">
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Labs ── */}
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        <FlaskConical className="w-4 h-4 inline mr-1.5" />
+                                        Lab Tests
+                                    </label>
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
                                         <input
-                                            value={pendingDosage}
-                                            onChange={e => setPendingDosage(e.target.value)}
-                                            placeholder="Dosage"
-                                            className="w-24 bg-background border border-input rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                            value={labSearch.query}
+                                            onChange={e => { labSearch.setQuery(e.target.value); setShowLabDropdown(true); }}
+                                            onFocus={() => setShowLabDropdown(true)}
+                                            placeholder="Search lab test..."
+                                            className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                         />
+                                        {/* Dropdown */}
+                                        {showLabDropdown && labSearch.results.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
+                                                {labSearch.results.map((lab: any) => (
+                                                    <button
+                                                        key={lab.id}
+                                                        onClick={() => addLab(lab)}
+                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                                                    >
+                                                        <span>{lab.name}</span>
+                                                        <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Pills */}
                                     <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {medicines.map(m => (
-                                            <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                                <Pill className="w-3 h-3" />
-                                                {m.name}{m.dosage ? ` (${m.dosage})` : ""}
-                                                <button onClick={() => removeMedicine(m.id)} className="ml-0.5 hover:text-red-400 transition-colors">
+                                        {labs.map(l => (
+                                            <span key={l.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                <FlaskConical className="w-3 h-3" />
+                                                {l.name}
+                                                <button onClick={() => removeLab(l.id)} className="ml-0.5 hover:text-red-400 transition-colors">
                                                     <X className="w-3 h-3" />
                                                 </button>
                                             </span>
@@ -466,312 +536,318 @@ export const ConsultationModal = ({
                                 </div>
                             </div>
 
-                            {/* ── Labs ── */}
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">
-                                    <FlaskConical className="w-4 h-4 inline mr-1.5" />
-                                    Lab Tests
-                                </label>
-                                <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                            {/* Severity & Follow-up row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        <AlertTriangle className="w-4 h-4 inline mr-1.5" />
+                                        Severity
+                                    </label>
+                                    <select
+                                        value={severity}
+                                        onChange={e => setSeverity(e.target.value)}
+                                        className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        <CalendarPlus className="w-4 h-4 inline mr-1.5" />
+                                        Next Follow-up
+                                    </label>
                                     <input
-                                        value={labSearch.query}
-                                        onChange={e => { labSearch.setQuery(e.target.value); setShowLabDropdown(true); }}
-                                        onFocus={() => setShowLabDropdown(true)}
-                                        placeholder="Search lab test..."
-                                        className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                        type="date"
+                                        value={nextFollowup}
+                                        onChange={e => setNextFollowup(e.target.value)}
+                                        className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                     />
-                                    {/* Dropdown */}
-                                    {showLabDropdown && labSearch.results.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-auto">
-                                            {labSearch.results.map((lab: any) => (
-                                                <button
-                                                    key={lab.id}
-                                                    onClick={() => addLab(lab)}
-                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
-                                                >
-                                                    <span>{lab.name}</span>
-                                                    <Plus className="w-3.5 h-3.5 text-muted-foreground" />
-                                                </button>
-                                            ))}
-                                        </div>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 pt-2">
+                                <GlassButton variant="ghost" onClick={onClose} className="flex-1">
+                                    Cancel
+                                </GlassButton>
+                                <GlassButton onClick={handleSubmit} className="flex-1" disabled={submitting}>
+                                    {submitting ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                                    ) : (
+                                        <><Send className="w-4 h-4 mr-2" /> Save Consultation</>
                                     )}
-                                </div>
-
-                                {/* Pills */}
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                    {labs.map(l => (
-                                        <span key={l.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                            <FlaskConical className="w-3 h-3" />
-                                            {l.name}
-                                            <button onClick={() => removeLab(l.id)} className="ml-0.5 hover:text-red-400 transition-colors">
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
+                                </GlassButton>
                             </div>
                         </div>
+                    ) : activeTab === 'vitals' ? (
+                        /* ── Vitals & Care Team Tab ── */
+                        <div className="space-y-6">
 
-                        {/* Severity & Follow-up row */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">
-                                    <AlertTriangle className="w-4 h-4 inline mr-1.5" />
-                                    Severity
-                                </label>
-                                <select
-                                    value={severity}
-                                    onChange={e => setSeverity(e.target.value)}
-                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                >
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                    <option value="critical">Critical</option>
-                                </select>
-                            </div>
+                            {/* 1. Nurse Assignment */}
+                            <div className="bg-secondary/30 rounded-xl p-4 border border-border/50">
+                                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
+                                    <UserPlus className="w-4 h-4 mr-2 text-primary" />
+                                    Care Team Assignment
+                                </h4>
 
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">
-                                    <CalendarPlus className="w-4 h-4 inline mr-1.5" />
-                                    Next Follow-up
-                                </label>
-                                <input
-                                    type="date"
-                                    value={nextFollowup}
-                                    onChange={e => setNextFollowup(e.target.value)}
-                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-3 pt-2">
-                            <GlassButton variant="ghost" onClick={onClose} className="flex-1">
-                                Cancel
-                            </GlassButton>
-                            <GlassButton onClick={handleSubmit} className="flex-1" disabled={submitting}>
-                                {submitting ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                                ) : (
-                                    <><Send className="w-4 h-4 mr-2" /> Save Consultation</>
-                                )}
-                            </GlassButton>
-                        </div>
-                    </div>
-                ) : activeTab === 'vitals' ? (
-                    /* ── Vitals & Care Team Tab ── */
-                    <div className="space-y-6">
-
-                        {/* 1. Nurse Assignment */}
-                        <div className="bg-secondary/30 rounded-xl p-4 border border-border/50">
-                            <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
-                                <UserPlus className="w-4 h-4 mr-2 text-primary" />
-                                Care Team Assignment
-                            </h4>
-
-                            <div className="flex flex-col gap-3">
-                                {assignedNurse ? (
-                                    <div className="flex items-center justify-between bg-primary/10 p-3 rounded-lg border border-primary/20">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                                                {assignedNurse.name?.[0] || "N"}
+                                <div className="flex flex-col gap-3">
+                                    {assignedNurse ? (
+                                        <div className="flex items-center justify-between bg-primary/10 p-3 rounded-lg border border-primary/20">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                                                    {assignedNurse.name?.[0] || "N"}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">
+                                                        {assignedNurse.name || "Assigned Nurse"}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">Nurse</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-foreground">
-                                                    {assignedNurse.name || "Assigned Nurse"}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">Nurse</p>
+                                            <div className="flex gap-2">
+                                                <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full flex items-center">
+                                                    <Check className="w-3 h-3 mr-1" /> Assigned
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full flex items-center">
-                                                <Check className="w-3 h-3 mr-1" /> Assigned
-                                            </span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <p className="text-xs text-muted-foreground">
-                                            Assign a nurse to monitor this patient's vitals.
-                                        </p>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                                            <input
-                                                className="w-full bg-background border border-input rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                                placeholder="Search nurse by name..."
-                                                value={nurseQuery}
-                                                onChange={(e) => setNurseQuery(e.target.value)}
-                                            />
-                                            {nurses.length > 0 && (
-                                                <div className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-40 overflow-auto">
-                                                    {nurses.map(nurse => (
-                                                        <button
-                                                            key={nurse.id}
-                                                            onClick={() => assignNurse(nurse)}
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex justify-between items-center"
-                                                        >
-                                                            <span>{nurse.full_name}</span>
-                                                            <span className="text-xs text-muted-foreground">Select</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <GlassButton
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={handleNurseSearch}
-                                            disabled={loadingNurses || !nurseQuery}
-                                            className="w-full"
-                                        >
-                                            {loadingNurses ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Search className="w-3 h-3 mr-2" />}
-                                            Find Nurse
-                                        </GlassButton>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* 2. Vitals Timeline */}
-                        <div>
-                            <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
-                                <Activity className="w-4 h-4 mr-2 text-rose-500" />
-                                Vitals History
-                            </h4>
-
-                            {!vitals || vitals.length === 0 ? (
-                                <div className="text-center py-8 border border-dashed border-border/60 rounded-xl bg-muted/5">
-                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                                        <Activity className="w-5 h-5 text-muted-foreground" />
-                                    </div>
-                                    <p className="text-sm font-medium text-foreground">No vitals recorded</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Vitals recorded by the nurse will appear here.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="relative border-l border-border/50 ml-3 space-y-6">
-                                    {vitals.map((vital, idx) => (
-                                        <div key={idx} className="relative pl-6">
-                                            {/* Timeline Dot */}
-                                            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-background border-2 border-primary ring-2 ring-primary/20"></div>
-
-                                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-border/40 overflow-hidden hover:bg-card/60 transition-colors">
-                                                {/* Header */}
-                                                <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-muted/20">
-                                                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                                        <CalendarPlus className="w-3.5 h-3.5" />
-                                                        {new Date(vital.timestamp || vital.created_at || Date.now()).toLocaleString()}
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                                                            {(vital.nurse?.full_name || vital.nurse_name || vital.recorded_by || "N")[0]}
-                                                        </div>
-                                                        <span className="text-xs text-foreground/80">
-                                                            {vital.nurse?.full_name || vital.nurse_name || vital.recorded_by || "Nurse"}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Grid */}
-                                                <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-background/50 border border-border/30">
-                                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">BP</span>
-                                                        <span className="text-sm font-bold text-foreground">{vital.bp}</span>
-                                                        <span className="text-xs text-muted-foreground">mmHg</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-rose-500/5 border border-rose-500/10">
-                                                        <span className="text-[10px] uppercase tracking-wider text-rose-500/70 mb-1">Pulse</span>
-                                                        <span className="text-sm font-bold text-rose-500">{vital.pulse}</span>
-                                                        <span className="text-xs text-rose-500/70">bpm</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-sky-500/5 border border-sky-500/10">
-                                                        <span className="text-[10px] uppercase tracking-wider text-sky-500/70 mb-1">SpO2</span>
-                                                        <span className="text-sm font-bold text-sky-500">{vital.spo2}</span>
-                                                        <span className="text-xs text-sky-500/70">%</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                                                        <span className="text-[10px] uppercase tracking-wider text-amber-500/70 mb-1">Temp</span>
-                                                        <span className="text-sm font-bold text-amber-500">{vital.temp}</span>
-                                                        <span className="text-xs text-amber-500/70">°F</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Remarks Footer */}
-                                                {vital.remarks && (
-                                                    <div className="px-4 py-2 bg-muted/10 border-t border-border/30">
-                                                        <p className="text-xs text-muted-foreground italic flex items-start gap-1.5">
-                                                            <FileText className="w-3 h-3 mt-0.5 opacity-70" />
-                                                            {vital.remarks}
-                                                        </p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <p className="text-xs text-muted-foreground">
+                                                Assign a nurse to monitor this patient's vitals.
+                                            </p>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                                                <input
+                                                    className="w-full bg-background border border-input rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    placeholder="Search nurse by name..."
+                                                    value={nurseQuery}
+                                                    onChange={(e) => setNurseQuery(e.target.value)}
+                                                />
+                                                {nurses.length > 0 && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-40 overflow-auto">
+                                                        {nurses.map(nurse => (
+                                                            <button
+                                                                key={nurse.id}
+                                                                onClick={() => assignNurse(nurse)}
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex justify-between items-center"
+                                                            >
+                                                                <span>{nurse.full_name}</span>
+                                                                <span className="text-xs text-muted-foreground">Select</span>
+                                                            </button>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
+                                            <GlassButton
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={handleNurseSearch}
+                                                disabled={loadingNurses || !nurseQuery}
+                                                className="w-full"
+                                            >
+                                                {loadingNurses ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Search className="w-3 h-3 mr-2" />}
+                                                Find Nurse
+                                            </GlassButton>
                                         </div>
-                                    ))}
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 2. Vitals Timeline */}
+                            <div>
+                                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
+                                    <Activity className="w-4 h-4 mr-2 text-rose-500" />
+                                    Vitals History
+                                </h4>
+
+                                {!vitals || vitals.length === 0 ? (
+                                    <div className="text-center py-8 border border-dashed border-border/60 rounded-xl bg-muted/5">
+                                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                                            <Activity className="w-5 h-5 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-sm font-medium text-foreground">No vitals recorded</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Vitals recorded by the nurse will appear here.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="relative border-l border-border/50 ml-3 space-y-6">
+                                        {vitals.map((vital, idx) => (
+                                            <div key={idx} className="relative pl-6">
+                                                {/* Timeline Dot */}
+                                                <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-background border-2 border-primary ring-2 ring-primary/20"></div>
+
+                                                <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-border/40 overflow-hidden hover:bg-card/60 transition-colors">
+                                                    {/* Header */}
+                                                    <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-muted/20">
+                                                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                                            <CalendarPlus className="w-3.5 h-3.5" />
+                                                            {new Date(vital.timestamp || vital.created_at || Date.now()).toLocaleString()}
+                                                        </span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                                                                {(vital.nurse?.full_name || vital.nurse_name || vital.recorded_by || "N")[0]}
+                                                            </div>
+                                                            <span className="text-xs text-foreground/80">
+                                                                {vital.nurse?.full_name || vital.nurse_name || vital.recorded_by || "Nurse"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Grid */}
+                                                    <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-background/50 border border-border/30">
+                                                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">BP</span>
+                                                            <span className="text-sm font-bold text-foreground">{vital.bp}</span>
+                                                            <span className="text-xs text-muted-foreground">mmHg</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-rose-500/5 border border-rose-500/10">
+                                                            <span className="text-[10px] uppercase tracking-wider text-rose-500/70 mb-1">Pulse</span>
+                                                            <span className="text-sm font-bold text-rose-500">{vital.pulse}</span>
+                                                            <span className="text-xs text-rose-500/70">bpm</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-sky-500/5 border border-sky-500/10">
+                                                            <span className="text-[10px] uppercase tracking-wider text-sky-500/70 mb-1">SpO2</span>
+                                                            <span className="text-sm font-bold text-sky-500">{vital.spo2}</span>
+                                                            <span className="text-xs text-sky-500/70">%</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                                                            <span className="text-[10px] uppercase tracking-wider text-amber-500/70 mb-1">Temp</span>
+                                                            <span className="text-sm font-bold text-amber-500">{vital.temp}</span>
+                                                            <span className="text-xs text-amber-500/70">°F</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Remarks Footer */}
+                                                    {vital.remarks && (
+                                                        <div className="px-4 py-2 bg-muted/10 border-t border-border/30">
+                                                            <p className="text-xs text-muted-foreground italic flex items-start gap-1.5">
+                                                                <FileText className="w-3 h-3 mt-0.5 opacity-70" />
+                                                                {vital.remarks}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    ) : activeTab === 'diet' ? (
+                        <div className="space-y-4">
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-2">
+                                <h4 className="text-amber-500 font-medium flex items-center mb-1">
+                                    <Sparkles className="w-4 h-4 mr-2" /> AI Diet Planner
+                                </h4>
+                                <p className="text-xs text-amber-500/80">
+                                    Click "Generate Diet Plan" to automatically stream a personalized nutrition guide based on the patient's problem ({fullAppointment?.description || "None"}) and your consultation remarks. If needed, you can manually rewrite or edit the text before saving.
+                                </p>
+                            </div>
+
+                            {isEditingDiet || generatingDiet || !dietPlanText ? (
+                                <textarea
+                                    autoFocus={isEditingDiet}
+                                    value={dietPlanText}
+                                    onChange={e => setDietPlanText(e.target.value)}
+                                    onBlur={() => {
+                                        setIsEditingDiet(false);
+                                        if (dietPlanText !== fullAppointment?.diet_plan && !generatingDiet) {
+                                            handleSaveDietPlan();
+                                        }
+                                    }}
+                                    placeholder="An AI-generated, customized diet plan will appear here..."
+                                    rows={12}
+                                    className="w-full bg-background border border-input rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 custom-scrollbar resize-none font-mono"
+                                />
+                            ) : (
+                                <div
+                                    onClick={() => setIsEditingDiet(true)}
+                                    className="w-full bg-background/50 border border-input/50 rounded-xl px-4 py-3 text-sm text-foreground cursor-text min-h-[250px] prose prose-sm dark:prose-invert prose-amber max-w-none hover:border-amber-500/50 transition-colors"
+                                    title="Click to edit"
+                                >
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {dietPlanText}
+                                    </ReactMarkdown>
                                 </div>
                             )}
-                        </div>
 
-                    </div>
-                ) : activeTab === 'diet' ? (
-                    <div className="space-y-4">
-                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-2">
-                            <h4 className="text-amber-500 font-medium flex items-center mb-1">
-                                <Sparkles className="w-4 h-4 mr-2" /> AI Diet Planner
-                            </h4>
-                            <p className="text-xs text-amber-500/80">
-                                Click "Generate Diet Plan" to automatically stream a personalized nutrition guide based on the patient's problem ({fullAppointment?.description || "None"}) and your consultation remarks. If needed, you can manually rewrite or edit the text before saving.
-                            </p>
-                        </div>
-
-                        {isEditingDiet || generatingDiet || !dietPlanText ? (
-                            <textarea
-                                autoFocus={isEditingDiet}
-                                value={dietPlanText}
-                                onChange={e => setDietPlanText(e.target.value)}
-                                onBlur={() => {
-                                    setIsEditingDiet(false);
-                                    if (dietPlanText !== fullAppointment?.diet_plan && !generatingDiet) {
-                                        handleSaveDietPlan();
-                                    }
-                                }}
-                                placeholder="An AI-generated, customized diet plan will appear here..."
-                                rows={12}
-                                className="w-full bg-background border border-input rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50 custom-scrollbar resize-none font-mono"
-                            />
-                        ) : (
-                            <div
-                                onClick={() => setIsEditingDiet(true)}
-                                className="w-full bg-background/50 border border-input/50 rounded-xl px-4 py-3 text-sm text-foreground cursor-text min-h-[250px] prose prose-sm dark:prose-invert prose-amber max-w-none hover:border-amber-500/50 transition-colors"
-                                title="Click to edit"
-                            >
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {dietPlanText}
-                                </ReactMarkdown>
+                            <div className="flex gap-3 pt-2">
+                                <GlassButton
+                                    onClick={handleGenerateDietPlan}
+                                    disabled={generatingDiet}
+                                    className="flex-1 border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                                    variant="ghost"
+                                >
+                                    {generatingDiet ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Streaming...</>
+                                    ) : (
+                                        <><Sparkles className="w-4 h-4 mr-2" /> Generate Diet Plan</>
+                                    )}
+                                </GlassButton>
+                                {/* Save is handled automatically on blur or stream completion */}
                             </div>
-                        )}
-
-                        <div className="flex gap-3 pt-2">
-                            <GlassButton
-                                onClick={handleGenerateDietPlan}
-                                disabled={generatingDiet}
-                                className="flex-1 border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
-                                variant="ghost"
-                            >
-                                {generatingDiet ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Streaming...</>
-                                ) : (
-                                    <><Sparkles className="w-4 h-4 mr-2" /> Generate Diet Plan</>
-                                )}
-                            </GlassButton>
-                            {/* Save is handled automatically on blur or stream completion */}
                         </div>
+                    ) : null}
+                </div>
+            </GlassModal>
+
+            {/* Doctor Call Custom Prompt Modal */}
+            <GlassModal open={showDocPromptModal} onClose={() => setShowDocPromptModal(false)} title="Configure Agent Call">
+                <div className="p-6 space-y-4 max-w-md w-full">
+                    <p className="text-sm text-muted-foreground mb-4">
+                        What specific questions should the AI agent ask {patientName} during this call?
+                    </p>
+
+                    <textarea
+                        value={doctorPrompt}
+                        onChange={(e) => setDoctorPrompt(e.target.value)}
+                        className="w-full bg-background border border-input rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        rows={4}
+                        placeholder="e.g. Ask them if they are still experiencing pain in their lower back after taking the new medicine..."
+                    />
+
+                    <div className="flex gap-3 justify-end mt-6">
+                        <GlassButton onClick={() => setShowDocPromptModal(false)} variant="ghost" disabled={isTriggeringCall}>
+                            Cancel
+                        </GlassButton>
+                        <GlassButton
+                            onClick={() => {
+                                if (!appointment?.patient?.phone) return;
+                                setIsTriggeringCall(true);
+                                import("@/lib/api").then(({ agentApi }) => {
+                                    agentApi.triggerCall({
+                                        phone_number: appointment.patient.phone,
+                                        appointment_id: appointment.id,
+                                        doctor_prompt: doctorPrompt || undefined
+                                    })
+                                        .then(() => {
+                                            toast({ title: "Call Initiated", description: "AI agent is calling the patient." });
+                                            setShowDocPromptModal(false);
+                                        })
+                                        .catch(e => {
+                                            console.error("Backend call trigger failed:", e);
+                                            toast({ variant: "destructive", title: "Call Failed", description: "Could not trigger AI call." });
+                                        })
+                                        .finally(() => {
+                                            setIsTriggeringCall(false);
+                                        });
+                                });
+                            }}
+                            disabled={isTriggeringCall}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            {isTriggeringCall ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
+                            Start Call
+                        </GlassButton>
                     </div>
-                ) : null}
-            </div>
-        </GlassModal>
+                </div>
+            </GlassModal>
+        </>
     );
 };
