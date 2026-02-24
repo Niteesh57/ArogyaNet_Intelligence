@@ -28,7 +28,21 @@ A command center for physicians — view today's appointments, upcoming schedule
 
 ---
 
-### 2. 🧠 Expert Learn (AI Knowledge Assistant)
+### 2. 💬 Doctor-Patient Secure Messaging
+
+After a consultation, patients can securely message **only their assigned doctor** through an in-app chat system. Clarify doubts, report allergies, or ask follow-up questions without needing to revisit the hospital. This reduces confusion, improves continuity of care, and strengthens doctor-patient trust.
+
+- Searchable conversation list
+- Real-time messaging with timestamps
+- Restricted to assigned doctor–patient pairs only
+
+<p align="center">
+  <img src="public/img/2.png" alt="Secure Messaging" width="90%" />
+</p>
+
+---
+
+### 3. 🧠 Expert Learn (AI Knowledge Assistant)
 
 AI-powered medical knowledge chat backed by **MedVQA & Pinecone** vector search. Doctors can ask about symptoms, treatment protocols, rare conditions, and get answers derived from senior clinicians' contributions.
 
@@ -41,7 +55,7 @@ AI-powered medical knowledge chat backed by **MedVQA & Pinecone** vector search.
 
 ---
 
-### 3. 📞 Consultation Agent
+### 4. 📞 Consultation Agent
 
 Full consultation management with **voice recording (MedASR)**, patient calling, clinical notes, severity tracking, and follow-up scheduling — all in a single screen.
 
@@ -56,7 +70,7 @@ Full consultation management with **voice recording (MedASR)**, patient calling,
 
 ---
 
-### 4. 🔬 Deep Research Agent (Multi-Agent Analysis)
+### 5. 🔬 Deep Research Agent (Multi-Agent Analysis)
 
 Upload medical scans, audio notes, or PDF histories. The **multi-agent system** activates — MedVQA analyzes images, MedASR transcribes audio, HeAR processes acoustics, MedSigLIP classifies, and Tavily fetches the latest research. All synthesized into a comprehensive AI report via **LangGraph**.
 
@@ -70,7 +84,7 @@ Upload medical scans, audio notes, or PDF histories. The **multi-agent system** 
 
 ---
 
-### 5. 📋 Events & Logs
+### 6. 📋 Events & Logs
 
 Track community health events, medical camps, wellness screenings, and outreach programs. Each event captures structured patient data with location, demographics, and vitals.
 
@@ -80,7 +94,7 @@ Track community health events, medical camps, wellness screenings, and outreach 
 
 ---
 
-### 6. 📊 Event Analytics (Admin)
+### 7. 📊 Event Analytics (Admin)
 
 Intelligent visualization of unstructured clinical data for hospital admins. Monitor BP trends, platelet counts, sugar levels, and location-wise breakdowns. **Spike detection** enables rapid response to anomalies.
 
@@ -94,7 +108,7 @@ Intelligent visualization of unstructured clinical data for hospital admins. Mon
 
 ---
 
-### 7. 🏢 Admin Portal
+### 8. 🏢 Admin Portal
 
 Full hospital administration — manage doctors, nurses, patients, appointments, medicines, lab tests, lab assistants, and floor assignments from a centralized portal.
 
@@ -104,7 +118,7 @@ Full hospital administration — manage doctors, nurses, patients, appointments,
 
 ---
 
-### 8. 📑 DocuMate Agent (Document Intelligence)
+### 9. 📑 DocuMate Agent (Document Intelligence)
 
 AI-powered document analysis agent. Upload X-rays, lab reports, or medical images — get instant AI summaries, critical value highlights, and a chat interface to ask follow-up questions about your documents.
 
@@ -118,7 +132,7 @@ AI-powered document analysis agent. Upload X-rays, lab reports, or medical image
 
 ---
 
-### 9. 👤 Patient Dashboard
+### 10. 👤 Patient Dashboard
 
 Patients can view upcoming visits, total visit history, book new consultations, access **DocuMate AI** for report analysis, and manage their healthcare journey.
 
@@ -128,7 +142,7 @@ Patients can view upcoming visits, total visit history, book new consultations, 
 
 ---
 
-### 10. 💉 Nurse Vitals & Care
+### 11. 💉 Nurse Vitals & Care
 
 Nurse assignment tracking with complete vitals history — BP, pulse, temperature, SpO2 — recorded and timestamped per visit. Supports the **offline-first mobile workflow** for field healthcare.
 

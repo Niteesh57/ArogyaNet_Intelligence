@@ -11,6 +11,14 @@ const features = [
         badgeColor: "bg-emerald-500/20 text-emerald-400",
     },
     {
+        image: "/img/2.png",
+        title: "Secure Messaging",
+        description:
+            "After a consultation, patients can securely message only their assigned doctor. Clarify doubts, report allergies, or ask follow-up questions — improving continuity of care without revisiting the hospital.",
+        badge: "Patient / Doctor",
+        badgeColor: "bg-amber-500/20 text-amber-400",
+    },
+    {
         image: "/img/3.png",
         title: "Expert Learn",
         description:
@@ -103,8 +111,8 @@ const FeatureCard = ({
             {/* Glassmorphism card */}
             <div
                 className={`relative bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden transition-all duration-500 ${isHovered
-                        ? "shadow-2xl shadow-primary/10 border-white/20 -translate-y-1"
-                        : "shadow-lg shadow-black/20"
+                    ? "shadow-2xl shadow-primary/10 border-white/20 -translate-y-1"
+                    : "shadow-lg shadow-black/20"
                     }`}
             >
                 {/* Image container */}
