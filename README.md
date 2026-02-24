@@ -12,7 +12,7 @@
 
 ## 📌 Purpose
 
-ArogyaNet AI's frontend provides a **unified, role-aware dashboard** for the entire clinical workflow — from doctor consultations and AI-driven diagnostics to nurse vitals collection, patient self-service, and hospital administration. It interfaces with the [ArogyaNet Backend](https://github.com/nagireddy5/life-health-crm) for AI agent orchestration, data persistence, and real-time communication.
+ArogyaNet AI's frontend provides a **unified, role-aware dashboard** for the entire clinical workflow — from doctor consultations and AI-driven diagnostics to nurse vitals collection, patient self-service, and hospital administration. It interfaces with the [ArogyaNet Backend](https://github.com/Niteesh57/ArogyaNet_AI) for AI agent orchestration, data persistence, and real-time communication.
 
 ---
 
