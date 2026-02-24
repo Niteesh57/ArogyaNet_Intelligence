@@ -351,8 +351,17 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="absolute bottom-6 left-0 right-0 text-center text-[10px] text-muted-foreground">
-          &copy; {new Date().getFullYear()} ArogyaNet AI Systems. Secured by Life Health.
+        <div className="absolute bottom-2 left-0 right-0 text-center space-y-2">
+          <button
+            onClick={() => navigate("/features")}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-300 shadow-sm"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Explore Features
+          </button>
+          <p className="text-[10px] text-muted-foreground">
+            &copy; {new Date().getFullYear()} ArogyaNet AI Systems. Secured by Life Health.
+          </p>
         </div>
       </div>
 

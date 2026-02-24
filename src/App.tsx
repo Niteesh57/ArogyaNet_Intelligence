@@ -29,6 +29,7 @@ import Profile from "./pages/Profile";
 const DeepResearch = lazy(() => import("./pages/DeepResearch"));
 const Events = lazy(() => import("./pages/Events"));
 const ExpertLearn = lazy(() => import("./pages/ExpertLearn"));
+const FeaturesPreview = lazy(() => import("./pages/FeaturesPreview"));
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
+              <Route path="/features" element={<FeaturesPreview />} />
 
               {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
