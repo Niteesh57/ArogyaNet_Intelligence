@@ -10,6 +10,13 @@
 
 ---
 
+### 🌐 Live Application
+- **Web Dashboard:** [arogya-net-intelligence.vercel.app](https://arogya-net-intelligence.vercel.app)
+- **Android APK:** [Download from HuggingFace](https://huggingface.co/nagireddy5/APP/blob/main/application-61d7f9a8-d603-461c-9a24-a7117131fea0.apk)
+
+
+---
+
 ## 📌 Purpose
 
 ArogyaNet AI's frontend provides a **unified, role-aware dashboard** for the entire clinical workflow — from doctor consultations and AI-driven diagnostics to nurse vitals collection, patient self-service, and hospital administration. It interfaces with the [ArogyaNet Backend](https://github.com/Niteesh57/ArogyaNet_AI) for AI agent orchestration, data persistence, and real-time communication.
