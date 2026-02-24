@@ -93,29 +93,36 @@ export default function DeepResearch() {
                 const chunk = decoder.decode(value, { stream: true });
                 accumulatedBuffer += chunk;
 
-                // SSE format: data: {...}\n\n
+                // Split by newline to get individual messages
                 const lines = accumulatedBuffer.split('\n');
-                // Keep the last line in buffer if incomplete
+
+                // The last element might be an incomplete line, keep it in the buffer
                 accumulatedBuffer = lines.pop() || "";
 
-                for (const line of lines) {
-                    if (line.trim().startsWith("data: ")) {
-                        const jsonStr = line.replace("data: ", "").trim();
-                        if (jsonStr === "[DONE]") break;
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line || !line.startsWith("data:")) continue;
 
-                        try {
-                            const event = JSON.parse(jsonStr);
+                    const jsonStr = line.substring(5).trim();
+                    if (jsonStr === "[DONE]") {
+                        setResearching(false);
+                        break;
+                    }
 
-                            if (event.type === 'status') {
-                                setStatusLog(prev => [...prev, event.message]);
-                            } else if (event.type === 'token') {
-                                setReport(prev => prev + event.content);
-                            } else if (event.type === 'done') {
-                                setResearching(false);
-                            }
-                        } catch (e) {
-                            // ignore parse errors for partial json
+                    try {
+                        const event = JSON.parse(jsonStr);
+
+                        if (event.type === 'status') {
+                            setStatusLog(prev => [...prev, event.message]);
+                        } else if (event.type === 'token') {
+                            setReport(prev => prev + event.content);
+                        } else if (event.type === 'done') {
+                            setResearching(false);
                         }
+                    } catch (e) {
+                        // Silent ignore for incomplete JSON chunks. 
+                        // Because we split by \n, and Groq guarantees full token JSONs per line, this is safe.
+                        // console.error("Failed to parse SSE JSON:", jsonStr, e);
                     }
                 }
             }
@@ -294,13 +301,18 @@ export default function DeepResearch() {
                         <div className="p-3 border-b border-border bg-muted/20 flex gap-2 overflow-x-auto whitespace-nowrap">
                             {statusLog.length === 0 ? (
                                 <span className="text-xs text-muted-foreground italic">Ready to start...</span>
-                            ) : (
+                            ) : researching ? (
                                 statusLog.slice(-1).map((log, i) => (
                                     <div key={i} className="flex items-center gap-2 text-xs text-primary animate-pulse">
                                         <Loader2 className="w-3 h-3 animate-spin" />
                                         {log}
                                     </div>
                                 ))
+                            ) : (
+                                <div className="flex items-center gap-2 text-xs text-green-500">
+                                    <span>✅</span>
+                                    Report Complete
+                                </div>
                             )}
                         </div>
 

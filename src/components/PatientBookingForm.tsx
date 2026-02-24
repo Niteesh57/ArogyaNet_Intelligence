@@ -36,7 +36,7 @@ export const PatientBookingForm = ({ onSuccess, className }: PatientBookingFormP
     // Search & Slots
     const [doctorQuery, setDoctorQuery] = useState("");
     const [doctorResults, setDoctorResults] = useState<any[]>([]);
-    const [selectedDoctor, setSelectedDoctor] = useState<{ id: string, name: string } | null>(null);
+    const [selectedDoctor, setSelectedDoctor] = useState<{ id: string, name: string, specialization?: string } | null>(null);
     const [availableSlots, setAvailableSlots] = useState<any[]>([]);
     const [slotLoading, setSlotLoading] = useState(false);
 
@@ -77,7 +77,7 @@ export const PatientBookingForm = ({ onSuccess, className }: PatientBookingFormP
     }, [doctorQuery]);
 
     const selectDoctor = (d: any) => {
-        setSelectedDoctor({ id: d.id, name: d.user?.full_name || d.specialization });
+        setSelectedDoctor({ id: d.id, name: d.user?.full_name || d.specialization, specialization: d.specialization });
         setApptForm(p => ({ ...p, doctor_id: d.id }));
         setDoctorQuery("");
         setDoctorResults([]);
@@ -133,7 +133,7 @@ export const PatientBookingForm = ({ onSuccess, className }: PatientBookingFormP
                 setApptForm(p => ({ ...p, doctor_id: data.doctor_id }));
                 try {
                     const docRes = await namesApi.getDoctorName(data.doctor_id);
-                    setSelectedDoctor({ id: data.doctor_id, name: docRes.data.full_name });
+                    setSelectedDoctor({ id: data.doctor_id, name: docRes.data.full_name, specialization: docRes.data.specialization });
                 } catch { }
             }
 
@@ -310,7 +310,9 @@ export const PatientBookingForm = ({ onSuccess, className }: PatientBookingFormP
                             <div className="flex items-center justify-between bg-primary/10 border border-primary/30 rounded-lg p-3">
                                 <div>
                                     <div className="font-medium">{selectedDoctor.name}</div>
-                                    <div className="text-xs text-muted-foreground">ID: {selectedDoctor.id}</div>
+                                    <div className="text-xs text-muted-foreground capitalize">
+                                        {selectedDoctor.specialization ? selectedDoctor.specialization : `ID: ${selectedDoctor.id}`}
+                                    </div>
                                 </div>
                                 <button onClick={() => { setSelectedDoctor(null); setApptForm(p => ({ ...p, doctor_id: "" })); }} className="text-muted-foreground hover:text-destructive">
                                     <X className="w-4 h-4" />
@@ -327,8 +329,9 @@ export const PatientBookingForm = ({ onSuccess, className }: PatientBookingFormP
                                 {doctorResults.length > 0 && (
                                     <div className="absolute z-10 w-full bg-background border border-border rounded-lg shadow-xl max-h-40 overflow-y-auto mt-1">
                                         {doctorResults.map(d => (
-                                            <div key={d.id} onClick={() => selectDoctor(d)} className="p-2 hover:bg-primary/20 cursor-pointer text-sm">
-                                                {d.user?.full_name || d.specialization}
+                                            <div key={d.id} onClick={() => selectDoctor(d)} className="p-2 hover:bg-primary/20 cursor-pointer text-sm border-b border-border/50 last:border-0">
+                                                <div className="font-medium">{d.user?.full_name || d.specialization}</div>
+                                                {d.specialization && <div className="text-xs text-muted-foreground text-opacity-80 capitalize">{d.specialization}</div>}
                                             </div>
                                         ))}
                                     </div>

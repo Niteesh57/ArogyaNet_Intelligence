@@ -151,66 +151,46 @@ export const AppointmentChatModal = ({ open, onClose, appointmentId, patientName
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let accumulatedResponse = "";
+            let buffer = "";
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                accumulatedResponse += chunk;
+                const chunk = decoder.decode(value, { stream: true });
+                buffer += chunk;
 
-                // Simple filter to remove <unused94>thought ... until it closes or just hide it
-                // The screenshot shows <unused94>thought\n... it might not have a closing tag or might be just at the start.
-                // We'll use a regex to strip it out if present.
-                // Pattern: <unused94>thought ... (content) ... 
-                // Since it's streaming, we might see partial tags.
-                // For now, let's strip the specific tag and maybe the whole block if we can identify the end.
-                // If it's standard chain of thought, it might end with </unused94> or just double newline.
+                // Split by newline to get individual SSE messages
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || "";
 
-                // Let's just strip the tag itself and the label "thought" for now, or if it's a block, try to remove the block.
-                // Assuming it appears at the start:
-                const cleanResponse = accumulatedResponse.replace(/<unused94>thought[\s\S]*?(?:<\/unused94>|$)/g, "").trim();
-                // Note: The regex above might be too aggressive if the closing tag hasn't arrived yet (it would eat everything). 
-                // But typically thoughts come first. If we are streaming, we might suppress everything until the thought completes.
-                // A safer approach for basic cleanup without blocking the stream: just hide the tag line.
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line || !line.startsWith("data:")) continue;
 
-                // New Approach: Just remove the specific tag string if it's leaking.
-                // But the user wants "that part" removed, implying the whole thought block. 
-                // If the thought block is the *only* thing so far, cleanResponse will be empty, which is fine.
+                    const jsonStr = line.substring(5).trim();
+                    if (jsonStr === "[DONE]") break;
 
-                // Refined regex to handle the specific tag seen in screenshot
-                const displayResponse = accumulatedResponse
-                    .replace(/<unused94>thought[\s\S]*?(?:<\/unused94>|\n\n\n)/g, "") // Try to match until closing or some delimiter
-                    .replace(/<unused94>thought[\s\S]*/, "") // If still open and at the start, hide everything (wait for completion)
-                    .replace(/<unused94>/g, "") // Fallback cleanup
-                    .trim();
+                    try {
+                        const event = JSON.parse(jsonStr);
 
-                // If we are hiding everything because of an open thought block, show nothing or a loader? 
-                // Actually, if we just want to hide the tag:
+                        if (event.type === 'token' && event.content) {
+                            accumulatedResponse += event.content;
+                        } else if (event.type === 'error') {
+                            accumulatedResponse += `\n\nError: ${event.message}`;
+                        }
+                        // 'done' type is handled by the stream ending
+                    } catch (e) {
+                        // Ignore incomplete JSON
+                    }
+                }
 
-                // Let's try a simpler remove for the tag line first, as the screenshot shows text *after* it might be the answer? 
-                // No, the screenshot shows the thought *is* the text.
-                // Wait, if the thought IS the text, we might be hiding real content if we hide it all.
-                // But usually "thought" is internal reasoning.
-                // The screenshot shows: <unused94>thought\n1. Identify the core question...
-
-                // Let's strip the <unused94>thought marker and let the text show? 
-                // No, user said "remove that part", implying the reasoning itself.
-
-                // If I aggressively strip `Start ... End`, and `End` has not arrived, I show nothing. 
-                // This mimics "thinking" state.
-
+                // Clean up any leaked model thought tags
                 let visibleText = accumulatedResponse;
-
-                // Remove thought blocks enclosed in <unused94>thought ... </unused94>
                 visibleText = visibleText.replace(/<unused94>thought[\s\S]*?<\/unused94>/g, "");
-
-                // If there is an open <unused94>thought at the start, hide it.
                 if (visibleText.includes("<unused94>thought")) {
                     visibleText = visibleText.split("<unused94>thought")[0];
                 }
-
-                // Also remove standalone tags if they leak
                 visibleText = visibleText.replace(/<unused94>/g, "").trim();
 
                 // Update the last message

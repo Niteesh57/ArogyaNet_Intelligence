@@ -706,10 +706,22 @@ const PatientDashboard = ({ user }: { user: any }) => {
                     </div>
                   </div>
 
-                  {/* Tap to view indicator */}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity">
-                    <Stethoscope className="w-4 h-4" />
-                    <span>View Details</span>
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 mt-4 md:mt-0 opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDocumateAppointment({ id: apt.id, patientName: "My" });
+                        setDocumateChatModal(true);
+                      }}
+                      className="flex items-center gap-2 p-2 px-3 rounded-lg bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 text-sm font-medium transition-colors border border-indigo-500/20"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      DocuMate AI
+                    </button>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity ml-2">
+                      <Stethoscope className="w-4 h-4" />
+                      <span>View Details</span>
+                    </div>
                   </div>
                 </div>
               );

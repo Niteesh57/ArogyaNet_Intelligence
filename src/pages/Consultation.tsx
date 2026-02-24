@@ -109,6 +109,8 @@ function useAudioRecorder(onRecordingComplete: (blob: Blob) => void) {
     }, []);
 
     const stop = useCallback(() => {
+        if (!streamRef.current && !processorRef.current) return; // Prevent double trigger
+
         if (processorRef.current && audioContextRef.current) {
             processorRef.current.disconnect();
             audioContextRef.current.close();
@@ -123,6 +125,8 @@ function useAudioRecorder(onRecordingComplete: (blob: Blob) => void) {
 
         // Combine chunks into single blob
         const chunks = audioChunksRef.current;
+        if (chunks.length === 0) return; // Nothing to send
+
         const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
         const combined = new Int16Array(totalLength);
         let offset = 0;
@@ -616,16 +620,14 @@ const Consultation = () => {
                     {(user?.role === "doctor" || user?.role?.toLowerCase() === "doctor") && (
                         <GlassButton
                             size="sm"
-                            disabled={!appointment.patient?.phone}
                             onClick={() => {
-                                if (!appointment.patient?.phone) return;
                                 setDoctorPrompt(""); // Reset prompt
                                 setShowDocPromptModal(true);
                             }}
-                            className={`border-green-500/20 ${appointment.patient?.phone ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "opacity-50 cursor-not-allowed text-muted-foreground"}`}
+                            className="border-green-500/20 bg-green-500/10 text-green-500 hover:bg-green-500/20"
                         >
                             <Phone className="w-4 h-4 mr-2" />
-                            {appointment.patient?.phone ? "Call Patient" : "No Phone"}
+                            Call Patient
                         </GlassButton>
                     )}
                     <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${severityColors[severity]}`}>
@@ -655,14 +657,7 @@ const Consultation = () => {
                     Vitals & Care Team
                     {activeTab === 'vitals' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />}
                 </button>
-                <button
-                    onClick={() => setActiveTab('call-history')}
-                    className={`pb-2 text-sm font-medium transition-colors relative ${activeTab === 'call-history' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <Phone className="w-4 h-4 inline mr-2" />
-                    Call History
-                    {activeTab === 'call-history' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />}
-                </button>
+                {/* Call History tab hidden — use Call Patient button at top instead */}
             </div>
 
             {/* Main Content Grid */}
@@ -1030,41 +1025,6 @@ const Consultation = () => {
                                     </div>
                                 )}
                             </div>
-                        </GlassCard>
-                    </div>
-                ) : activeTab === 'call-history' ? (
-                    /* ═══ Call History ═══ */
-                    <div className="space-y-6">
-                        <GlassCard className="p-6">
-                            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                <Phone className="w-5 h-5 text-primary" />
-                                AI Receptionist Call Transcript
-                            </h2>
-                            {loadingScripts ? (
-                                <div className="flex justify-center py-10">
-                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                </div>
-                            ) : callScripts.length === 0 ? (
-                                <div className="text-center py-12 bg-secondary/20 rounded-xl border border-border/50">
-                                    <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                                    <h3 className="text-lg font-medium">No Call History</h3>
-                                    <p className="text-muted-foreground mt-1">There are no recorded transcripts for this appointment yet.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4 max-h-[500px] overflow-y-auto px-2 custom-scrollbar">
-                                    {callScripts.map((msg: any, i: number) => (
-                                        <div key={msg.id || i} className={`flex ${msg.speaker === 'agent' ? 'justify-start' : 'justify-end'}`}>
-                                            <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${msg.speaker === 'agent' ? 'bg-secondary/50 text-foreground rounded-tl-none' : 'bg-primary text-primary-foreground rounded-tr-none'}`}>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-xs font-semibold uppercase opacity-80">{msg.speaker === 'agent' ? 'AI Agent' : 'Patient'}</span>
-                                                    <span className="text-[10px] opacity-60">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
-                                                <p className="text-sm">{msg.message}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </GlassCard>
                     </div>
                 ) : null

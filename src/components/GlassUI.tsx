@@ -11,7 +11,7 @@ interface GlassModalProps {
 
 export const GlassModal = ({ open, onClose, title, children, className }: GlassModalProps) => (
   <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-    <DialogContent className={`bg-background border-border shadow-lg ${className || 'sm:max-w-lg'}`}>
+    <DialogContent className={`bg-background border-border shadow-lg max-h-[90vh] overflow-y-auto ${className || 'sm:max-w-lg'}`}>
       <DialogHeader>
         <DialogTitle className="text-xl font-semibold text-foreground">{title}</DialogTitle>
       </DialogHeader>
